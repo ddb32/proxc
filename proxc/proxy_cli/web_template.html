@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProxC Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .badge-protocol-http { background-color: #0d6efd; }
+        .badge-protocol-https { background-color: #198754; }
+        .badge-protocol-socks4 { background-color: #fd7e14; }
+        .badge-protocol-socks5 { background-color: #6f42c1; }
+        
+        .badge-status-active { background-color: #198754; }
+        .badge-status-inactive { background-color: #6c757d; }
+        .badge-status-failed { background-color: #dc3545; }
+        
+        .badge-threat-low { background-color: #198754; }
+        .badge-threat-medium { background-color: #ffc107; color: #000; }
+        .badge-threat-high { background-color: #fd7e14; }
+        .badge-threat-critical { background-color: #dc3545; }
+        
+        .sortable { cursor: pointer; user-select: none; }
+        .sortable:hover { background-color: rgba(255,255,255,0.1); }
+        .sort-asc::after { content: ' ↑'; }
+        .sort-desc::after { content: ' ↓'; }
+        
+        .table-responsive { max-height: 600px; }
+        #proxy-table { font-size: 0.9em; }
+        
+        .auto-refresh { 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        
+        <div class="row py-3 bg-dark text-white">
+            <div class="col">
+                <h1 class="mb-0"><i class="bi bi-shield-check"></i> ProxC Dashboard</h1>
+                <small class="text-muted">Real-time proxy analysis and monitoring</small>
+            </div>
+        </div>
+        
+        <!-- Summary Cards -->
+        <div class="row mt-3" id="summary-cards">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title" id="total-proxies">-</h4>
+                                <p class="card-text">Total Proxies</p>
+                            </div>
+                            <i class="bi bi-server fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title" id="active-proxies">-</h4>
+                                <p class="card-text">Active Proxies</p>
+                            </div>
+                            <i class="bi bi-check-circle fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title" id="success-rate">-</h4>
+                                <p class="card-text">Success Rate</p>
+                            </div>
+                            <i class="bi bi-graph-up fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title" id="avg-response">-</h4>
+                                <p class="card-text">Avg Response</p>
+                            </div>
+                            <i class="bi bi-stopwatch fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="row mt-4">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="search-input" placeholder="Search proxies...">
+                    <select class="form-select" id="protocol-filter" style="max-width: 150px;">
+                        <option value="">All Protocols</option>
+                        <option value="HTTP">HTTP</option>
+                        <option value="HTTPS">HTTPS</option>
+                        <option value="SOCKS4">SOCKS4</option>
+                        <option value="SOCKS5">SOCKS5</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" id="refresh-btn">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group me-2">
+                    <select class="form-select" id="profile-select" style="max-width: 200px;">
+                        <option value="">Select Profile...</option>
+                    </select>
+                    <button class="btn btn-outline-info" id="execute-profile" disabled>
+                        <i class="bi bi-play"></i> Execute
+                    </button>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-outline-success" id="export-json">
+                        <i class="bi bi-download"></i> Export JSON
+                    </button>
+                    <button class="btn btn-outline-primary" id="export-csv">
+                        <i class="bi bi-file-earmark-text"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Proxy Table -->
+        <div class="row mt-3">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Proxy List</h5>
+                        <span class="badge bg-secondary" id="proxy-count">0 proxies</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0" id="proxy-table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="sortable" data-column="address">Address <i class="bi bi-chevron-expand"></i></th>
+                                        <th class="sortable" data-column="protocol">Protocol <i class="bi bi-chevron-expand"></i></th>
+                                        <th class="sortable" data-column="status">Status <i class="bi bi-chevron-expand"></i></th>
+                                        <th class="sortable" data-column="anonymity_level">Anonymity <i class="bi bi-chevron-expand"></i></th>
+                                        <th class="sortable" data-column="country">Country <i class="bi bi-chevron-expand"></i></th>
+                                        <th class="sortable" data-column="response_time">Response Time <i class="bi bi-chevron-expand"></i></th>
+                                        <th class="sortable" data-column="threat_level">Threat <i class="bi bi-chevron-expand"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="proxy-tbody">
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Auto-refresh toggle and connection status -->
+    <div class="auto-refresh">
+        <div class="mb-2">
+            <span id="connection-status" class="badge bg-secondary">Connecting...</span>
+        </div>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+            <label class="form-check-label" for="auto-refresh">Auto-refresh</label>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentData = [];
+        let sortColumn = null;
+        let sortDirection = 'asc';
+        let autoRefreshInterval = null;
+        let websocket = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSummary();
+            loadProxies();
+            loadProfiles();
+            setupEventListeners();
+            connectWebSocket();
+            startAutoRefresh();
+        });
+        
+        function setupEventListeners() {
+            // Search input
+            document.getElementById('search-input').addEventListener('input', filterAndRender);
+            
+            // Protocol filter
+            document.getElementById('protocol-filter').addEventListener('change', filterAndRender);
+            
+            // Refresh button
+            document.getElementById('refresh-btn').addEventListener('click', function() {
+                loadSummary();
+                loadProxies();
+            });
+            
+            // Export buttons
+            document.getElementById('export-json').addEventListener('click', () => exportData('json'));
+            document.getElementById('export-csv').addEventListener('click', () => exportData('csv'));
+            
+            // Profile selection
+            document.getElementById('profile-select').addEventListener('change', function() {
+                const executeBtn = document.getElementById('execute-profile');
+                executeBtn.disabled = !this.value;
+            });
+            
+            // Profile execution
+            document.getElementById('execute-profile').addEventListener('click', executeSelectedProfile);
+            
+            // Auto-refresh toggle
+            document.getElementById('auto-refresh').addEventListener('change', function() {
+                if (this.checked) {
+                    startAutoRefresh();
+                } else {
+                    stopAutoRefresh();
+                }
+            });
+            
+            // Table sorting
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.dataset.column;
+                    if (sortColumn === column) {
+                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortColumn = column;
+                        sortDirection = 'asc';
+                    }
+                    sortAndRender();
+                });
+            });
+        }
+        
+        function startAutoRefresh() {
+            autoRefreshInterval = setInterval(() => {
+                loadSummary();
+                loadProxies();
+            }, 30000); // 30 seconds
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+        
+        function connectWebSocket() {
+            try {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                
+                websocket = new WebSocket(wsUrl);
+                
+                websocket.onopen = function(event) {
+                    console.log('WebSocket connected');
+                    reconnectAttempts = 0;
+                    
+                    // Update connection status indicator if it exists
+                    updateConnectionStatus(true);
+                };
+                
+                websocket.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        handleWebSocketMessage(message);
+                    } catch (error) {
+                        console.error('Error parsing WebSocket message:', error);
+                    }
+                };
+                
+                websocket.onclose = function(event) {
+                    console.log('WebSocket disconnected');
+                    updateConnectionStatus(false);
+                    
+                    // Attempt to reconnect
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                        setTimeout(connectWebSocket, 3000 * reconnectAttempts);
+                    }
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                };
+                
+            } catch (error) {
+                console.error('Error connecting to WebSocket:', error);
+            }
+        }
+        
+        function handleWebSocketMessage(message) {
+            switch (message.type) {
+                case 'summary_update':
+                    updateSummaryFromWebSocket(message.data);
+                    break;
+                case 'proxy_update':
+                    handleProxyUpdate(message.data);
+                    break;
+                default:
+                    console.log('Unknown WebSocket message type:', message.type);
+            }
+        }
+        
+        function updateSummaryFromWebSocket(data) {
+            // Update summary cards
+            document.getElementById('total-proxies').textContent = data.total_proxies;
+            document.getElementById('active-proxies').textContent = data.active_proxies;
+            document.getElementById('success-rate').textContent = `${data.success_rate}%`;
+            document.getElementById('avg-response').textContent = `${data.avg_response_time}ms`;
+        }
+        
+        function handleProxyUpdate(data) {
+            // Handle individual proxy updates
+            console.log('Proxy update received:', data);
+            // Refresh the proxy list if needed
+            loadProxies();
+        }
+        
+        function updateConnectionStatus(connected) {
+            // Add a connection status indicator to the UI
+            const statusElement = document.getElementById('connection-status');
+            if (statusElement) {
+                statusElement.textContent = connected ? 'Connected' : 'Disconnected';
+                statusElement.className = connected ? 'badge bg-success' : 'badge bg-danger';
+            }
+        }
+        
+        async function loadProfiles() {
+            try {
+                const response = await fetch('/api/v1/profiles');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const profileSelect = document.getElementById('profile-select');
+                    
+                    // Clear existing options (except first)
+                    while (profileSelect.options.length > 1) {
+                        profileSelect.remove(1);
+                    }
+                    
+                    // Add profiles
+                    const profiles = data.data.profiles;
+                    Object.keys(profiles).forEach(categoryKey => {
+                        const category = profiles[categoryKey];
+                        Object.keys(category).forEach(profileName => {
+                            const profile = category[profileName];
+                            const option = document.createElement('option');
+                            option.value = profileName;
+                            option.textContent = `${profile.description} (${categoryKey})`;
+                            profileSelect.appendChild(option);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading profiles:', error);
+            }
+        }
+        
+        async function executeSelectedProfile() {
+            const profileSelect = document.getElementById('profile-select');
+            const profileName = profileSelect.value;
+            
+            if (!profileName) return;
+            
+            const executeBtn = document.getElementById('execute-profile');
+            const originalText = executeBtn.innerHTML;
+            
+            try {
+                executeBtn.disabled = true;
+                executeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Executing...';
+                
+                const response = await fetch(`/api/v1/profiles/${profileName}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show success message and commands
+                    const commands = data.data.commands;
+                    alert(`Profile "${profileName}" executed successfully!\n\nCommands:\n${commands.join('\n')}`);
+                    
+                    // Refresh data after execution
+                    loadSummary();
+                    loadProxies();
+                } else {
+                    alert(`Error executing profile: ${data.message}`);
+                }
+                
+            } catch (error) {
+                console.error('Error executing profile:', error);
+                alert('Error executing profile. Check console for details.');
+            } finally {
+                executeBtn.disabled = false;
+                executeBtn.innerHTML = originalText;
+            }
+        }
+        
+        async function loadSummary() {
+            try {
+                const response = await fetch('/api/summary');
+                const data = await response.json();
+                
+                document.getElementById('total-proxies').textContent = data.total_proxies;
+                document.getElementById('active-proxies').textContent = data.active_proxies;
+                document.getElementById('success-rate').textContent = `${data.success_rate}%`;
+                document.getElementById('avg-response').textContent = `${data.avg_response_time}ms`;
+                
+            } catch (error) {
+                console.error('Error loading summary:', error);
+            }
+        }
+        
+        async function loadProxies() {
+            try {
+                const response = await fetch('/api/proxies');
+                const data = await response.json();
+                
+                currentData = data.proxies;
+                document.getElementById('proxy-count').textContent = `${data.total_count} proxies`;
+                
+                filterAndRender();
+                
+            } catch (error) {
+                console.error('Error loading proxies:', error);
+                const tbody = document.getElementById('proxy-tbody');
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading proxy data</td></tr>';
+            }
+        }
+        
+        function filterAndRender() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const protocolFilter = document.getElementById('protocol-filter').value;
+            
+            let filtered = currentData.filter(proxy => {
+                const matchesSearch = !searchTerm || 
+                    proxy.address.toLowerCase().includes(searchTerm) ||
+                    (proxy.country && proxy.country.toLowerCase().includes(searchTerm));
+                
+                const matchesProtocol = !protocolFilter || 
+                    proxy.protocol.toUpperCase() === protocolFilter;
+                
+                return matchesSearch && matchesProtocol;
+            });
+            
+            renderTable(filtered);
+        }
+        
+        function sortAndRender() {
+            // Update sort indicators
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.classList.remove('sort-asc', 'sort-desc');
+                if (header.dataset.column === sortColumn) {
+                    header.classList.add(`sort-${sortDirection}`);
+                }
+            });
+            
+            filterAndRender();
+        }
+        
+        function renderTable(data) {
+            const tbody = document.getElementById('proxy-tbody');
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No proxies found</td></tr>';
+                return;
+            }
+            
+            // Sort data if needed
+            if (sortColumn) {
+                data.sort((a, b) => {
+                    let aVal = a[sortColumn] || '';
+                    let bVal = b[sortColumn] || '';
+                    
+                    if (typeof aVal === 'number' && typeof bVal === 'number') {
+                        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                    }
+                    
+                    aVal = String(aVal).toLowerCase();
+                    bVal = String(bVal).toLowerCase();
+                    
+                    if (sortDirection === 'asc') {
+                        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                    } else {
+                        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                    }
+                });
+            }
+            
+            tbody.innerHTML = data.map(proxy => `
+                <tr>
+                    <td><code>${proxy.address}</code></td>
+                    <td><span class="badge badge-protocol-${proxy.protocol}">${proxy.protocol.toUpperCase()}</span></td>
+                    <td><span class="badge badge-status-${proxy.status.toLowerCase()}">${proxy.status}</span></td>
+                    <td>${proxy.anonymity_level || 'Unknown'}</td>
+                    <td>${proxy.country ? `${proxy.country} <small class="text-muted">(${proxy.country_code})</small>` : 'Unknown'}</td>
+                    <td>${proxy.response_time ? `${proxy.response_time}ms` : 'N/A'}</td>
+                    <td><span class="badge badge-threat-${proxy.threat_level.toLowerCase()}">${proxy.threat_level}</span></td>
+                </tr>
+            `).join('');
+        }
+        
+        async function exportData(format) {
+            try {
+                const url = `/api/export?format=${format}`;
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `proxies.${format}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(downloadUrl);
+                } else {
+                    console.error('Export failed:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

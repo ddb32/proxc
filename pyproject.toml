@@ -1,0 +1,147 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proxc"
+dynamic = ["version"]
+description = "Advanced system for proxy management and validation"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Neo", email = "neo@example.com"}
+]
+maintainers = [
+    {name = "Neo", email = "neo@example.com"}
+]
+keywords = ["proxy", "hunter", "validation", "anonymity", "security", "networking"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: Proxy Servers",
+    "Topic :: Security",
+    "Topic :: System :: Networking",
+]
+requires-python = ">=3.8"
+
+# Basic dependencies
+dependencies = [
+    "click>=8.0.0",
+    "requests>=2.28.0",
+    "sqlalchemy>=1.4.0",
+    "pyyaml>=6.0",
+    "beautifulsoup4>=4.10.0",
+]
+
+[project.optional-dependencies]
+full = [
+    "rich>=13.0.0",
+    "schedule>=1.2.0",
+    "openpyxl>=3.0.0",
+    "dnspython>=2.2.0",
+    "aiohttp>=3.8.0",
+    "geoip2>=4.6.0",
+    "psutil>=5.9.0",
+    "chardet>=5.0.0",
+    "lxml>=4.9.0",
+    "pandas>=1.5.0",
+    "prometheus_client>=0.15.0",
+]
+
+cli = [
+    "rich>=13.0.0",
+    "schedule>=1.2.0",
+]
+
+monitoring = [
+    "rich>=13.0.0",
+    "psutil>=5.9.0",
+    "prometheus_client>=0.15.0",
+]
+
+geolocation = [
+    "geoip2>=4.6.0",
+    "dnspython>=2.2.0",
+]
+
+export = [
+    "openpyxl>=3.0.0",
+    "pandas>=1.5.0",
+]
+
+async = [
+    "aiohttp>=3.8.0",
+]
+
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=22.0.0",
+    "flake8>=5.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.scripts]
+proxc = "proxc.main:main"
+proxc-cli = "proxc.proxy_cli.cli:main_cli"
+proxc-monitor = "proxc.proxy_cli.monitor:start_dashboard_monitoring"
+
+[project.urls]
+Homepage = "https://github.com/neo/proxc"
+Repository = "https://github.com/neo/proxc"
+Documentation = "https://github.com/neo/proxc/wiki"
+"Bug Tracker" = "https://github.com/neo/proxc/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "proxc.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["proxc*"]
+
+[tool.setuptools.package-data]
+proxc = ["*.py", "*/*.py"]
+
+# Development tool settings
+[tool.black]
+line-length = 120
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false

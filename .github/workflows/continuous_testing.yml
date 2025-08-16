@@ -1,0 +1,296 @@
+# Continuous Testing Pipeline - Phase 4.1.7
+# Comprehensive CI/CD pipeline for automated testing
+
+name: Continuous Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run nightly tests at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10", "3.11"]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio
+    
+    - name: Run unit tests
+      run: |
+        python tests/test_suite_comprehensive.py
+    
+    - name: Generate coverage report
+      run: |
+        pytest tests/ --cov=proxc --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run integration tests
+      run: |
+        python tests/integration_test_framework.py
+    
+    - name: Archive test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: integration-test-results
+        path: |
+          test_results/
+          *.log
+
+  fuzzing-tests:
+    name: Fuzzing Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run fuzzing tests
+      run: |
+        python tests/fuzzing_framework.py
+    
+    - name: Upload fuzzing results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: fuzzing-results
+        path: |
+          fuzzing_results/
+          *.log
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install psutil
+    
+    - name: Download baseline results
+      uses: actions/download-artifact@v3
+      with:
+        name: performance-baseline
+        path: ./baseline/
+      continue-on-error: true
+    
+    - name: Run performance benchmarks
+      run: |
+        python tests/performance_benchmark_suite.py --baseline ./baseline/performance_baseline.json
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: |
+          performance_results/
+          *.json
+
+  stress-tests:
+    name: Stress Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[stress-test]')
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install psutil
+    
+    - name: Run stress tests
+      run: |
+        python tests/stress_testing_framework.py
+    
+    - name: Upload stress test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: stress-test-results
+        path: |
+          stress_results/
+          *.log
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run Bandit security scan
+      run: |
+        pip install bandit
+        bandit -r proxc/ -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Run Safety check
+      run: |
+        pip install safety
+        safety check --json --output safety-report.json
+      continue-on-error: true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy
+    
+    - name: Run Black formatter check
+      run: |
+        black --check proxc/
+    
+    - name: Run isort import check
+      run: |
+        isort --check-only proxc/
+    
+    - name: Run flake8 linting
+      run: |
+        flake8 proxc/ --max-line-length=100
+    
+    - name: Run mypy type checking
+      run: |
+        mypy proxc/ --ignore-missing-imports
+      continue-on-error: true
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, fuzzing-tests, performance-tests, security-scan, code-quality]
+    if: always()
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Generate test summary
+      run: |
+        echo "# Test Suite Summary" > test-summary.md
+        echo "" >> test-summary.md
+        echo "## Test Results" >> test-summary.md
+        echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> test-summary.md
+        echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> test-summary.md
+        echo "- Fuzzing Tests: ${{ needs.fuzzing-tests.result }}" >> test-summary.md
+        echo "- Performance Tests: ${{ needs.performance-tests.result }}" >> test-summary.md
+        echo "- Security Scan: ${{ needs.security-scan.result }}" >> test-summary.md
+        echo "- Code Quality: ${{ needs.code-quality.result }}" >> test-summary.md
+        echo "" >> test-summary.md
+        echo "Generated at: $(date)" >> test-summary.md
+    
+    - name: Upload test summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-summary
+        path: test-summary.md
+
+  update-baseline:
+    name: Update Performance Baseline
+    runs-on: ubuntu-latest
+    needs: performance-tests
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Download performance results
+      uses: actions/download-artifact@v3
+      with:
+        name: performance-results
+        path: ./results/
+    
+    - name: Update baseline
+      run: |
+        # Copy current results as new baseline
+        cp ./results/performance_results.json ./performance_baseline.json
+    
+    - name: Upload new baseline
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-baseline
+        path: performance_baseline.json

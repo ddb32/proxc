@@ -1,0 +1,537 @@
+# ProxyHunter Source Configuration
+# ================================
+# This file defines all proxy sources that ProxyHunter can collect from.
+# 
+# Structure:
+# - proxy_sources: Main source definitions
+#   - free: Free/public proxy sources  
+#   - premium: Paid proxy services (commented out by default)
+#   - custom: User-defined sources
+# - collection: Global collection settings
+# - profiles: Pre-defined collection profiles
+
+version: "1.0"
+last_updated: "2024-01-15"
+
+# Global collection settings
+collection:
+  # Default settings applied to all sources unless overridden
+  defaults:
+    timeout: 30
+    max_retries: 3
+    retry_delay: 60
+    user_agent_rotation: true
+    respect_robots_txt: false
+    verify_ssl: false
+    
+  # Rate limiting defaults
+  rate_limiting:
+    default_delay: 2.0
+    jitter_range: [0.1, 0.5]
+    burst_protection: true
+    adaptive_delays: true
+    
+  # Quality filters applied during collection
+  quality_filters:
+    min_success_rate: 0.3
+    max_response_time: 10000  # milliseconds
+    exclude_private_ips: true
+    exclude_localhost: true
+    
+  # Collection scheduling
+  schedules:
+    default_interval: "0 */6 * * *"  # Every 6 hours
+    peak_hours: [6, 12, 18]  # Preferred collection times
+    avoid_hours: [0, 1, 2, 3]  # Low-activity hours
+    
+# Source definitions
+proxy_sources:
+  
+  # ============================================================================
+  # FREE SOURCES - Publicly available proxy lists
+  # ============================================================================
+  free:
+    
+    # API-based sources (JSON responses)
+    proxyscrape_api:
+      enabled: true
+      name: "ProxyScrape API"
+      description: "Popular free proxy API with good coverage"
+      url: "https://api.proxyscrape.com/v2/?request=get&format=textplain&protocol=http&timeout=5000&country=all&ssl=all&anonymity=all"
+      type: "text_list"
+      source_type: "text"
+      quality_score: 7
+      
+      # Request configuration
+      rate_limit: 3.0
+      timeout: 30
+      max_proxies: 1000
+      concurrent_requests: 1
+      
+      # Text parsing configuration (changed from JSON to text format)
+      proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+      line_format: "ip:port"
+        
+      # Headers and authentication
+      headers:
+        User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        Accept: "application/json"
+        
+      # Quality and filtering
+      supports_protocols: ["http", "https"]
+      expected_countries: ["US", "GB", "DE", "FR", "CA", "AU"]
+      trust_level: "medium"
+      
+    freeproxy_world:
+      enabled: false  # Temporarily disabled due to API issues
+      name: "FreeProxy.World API"
+      description: "Free proxy service with decent quality (currently disabled due to API changes)"
+      url: "https://www.freeproxy.world/api/proxy"
+      type: "api"
+      source_type: "json"
+      quality_score: 6
+      
+      rate_limit: 2.0
+      timeout: 25
+      max_proxies: 500
+      
+      # Note: This source has been temporarily disabled due to API access issues
+      # Will be re-enabled once the API issues are resolved
+      
+      headers:
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        
+      supports_protocols: ["http", "https"]
+      trust_level: "medium"
+      
+    proxy_list_download:
+      enabled: true
+      name: "Proxy-List.Download"
+      description: "Simple text-based proxy list"
+      url: "https://www.proxy-list.download/api/v1/get?type=http"
+      type: "text_list"
+      source_type: "text"
+      quality_score: 5
+      
+      rate_limit: 2.0
+      timeout: 20
+      max_proxies: 300
+      
+      # Text parsing configuration
+      proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+      line_format: "ip:port"
+      
+      headers:
+        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+        
+      supports_protocols: ["http"]
+      trust_level: "low"
+      
+    # HTML table-based sources
+    hidemy_name:
+      enabled: false  # Temporarily disabled due to connection issues
+      name: "HideMyName Proxy List"
+      description: "Popular proxy listing site (currently disabled due to connection issues)"
+      url: "https://hidemy.name/en/proxy-list/?maxtime=1000&type=h#list"
+      type: "html_table"
+      source_type: "html"
+      quality_score: 6
+      
+      # Note: This source has been temporarily disabled due to HTTP connection issues
+      # Will be re-enabled once the connection issues are resolved
+      
+      rate_limit: 4.0
+      timeout: 30
+      max_proxies: 200
+      
+      # HTML parsing configuration
+      table_selector: "table.proxy__t"
+      row_selector: "tbody tr"
+      column_mapping:
+        ip: 0
+        port: 1
+        country: 2
+        anonymity: 4
+        protocol: 5
+        
+      headers:
+        User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        Accept-Language: "en-US,en;q=0.5"
+        
+      supports_protocols: ["http", "https"]
+      trust_level: "medium"
+      
+    proxylist_plus:
+      enabled: true
+      name: "ProxyList Plus"
+      description: "Fresh proxy list updated frequently"
+      url: "https://list.proxylistplus.com/Fresh-HTTP-Proxy-List-1"
+      type: "html_table"
+      source_type: "html"
+      quality_score: 5
+      
+      rate_limit: 2.5
+      timeout: 25
+      max_proxies: 250
+      
+      table_selector: "table.bg"
+      row_selector: "tr"
+      column_mapping:
+        ip: 0
+        port: 1
+        
+      headers:
+        User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        
+      supports_protocols: ["http"]
+      trust_level: "low"
+      
+    spys_one:
+      enabled: false  # Disabled by default - requires JS rendering
+      name: "Spys.one"
+      description: "Large proxy database (requires special handling)"
+      url: "http://spys.one/en/http-proxy-list/"
+      type: "html_table"
+      source_type: "html"
+      quality_score: 8
+      
+      rate_limit: 5.0
+      timeout: 45
+      max_proxies: 500
+      requires_js: true  # Needs JavaScript rendering
+      
+      headers:
+        User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        
+      supports_protocols: ["http", "https", "socks4", "socks5"]
+      trust_level: "high"
+      notes: "Enable only if you have JS rendering capability"
+      
+    github_proxy_lists:
+      enabled: true
+      name: "GitHub Proxy Collections"
+      description: "Community-maintained proxy lists on GitHub"
+      type: "multi_source"
+      quality_score: 6
+      
+      rate_limit: 3.0
+      timeout: 30
+      max_proxies: 800
+      
+      # Multiple URLs for this source
+      urls:
+        - "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt"
+        - "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt"
+        - "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt"
+        
+      source_type: "text"
+      proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+      
+      headers:
+        User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        Accept: "text/plain"
+        
+      supports_protocols: ["http", "https"]
+      trust_level: "medium"
+      
+    # Additional reliable sources for better diversity
+    openproxy_space:
+      enabled: true
+      name: "OpenProxy.Space"
+      description: "Simple and reliable proxy list"
+      url: "https://openproxy.space/list/http"
+      type: "text_list"
+      source_type: "text"
+      quality_score: 5
+      
+      rate_limit: 2.0
+      timeout: 20
+      max_proxies: 200
+      
+      proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+      line_format: "ip:port"
+      
+      headers:
+        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+        
+      supports_protocols: ["http"]
+      trust_level: "low"
+      
+    proxyrotator:
+      enabled: true
+      name: "ProxyRotator"
+      description: "Free proxy rotation service"
+      url: "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-http.txt"
+      type: "text_list"
+      source_type: "text"
+      quality_score: 6
+      
+      rate_limit: 2.5
+      timeout: 25
+      max_proxies: 300
+      
+      proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+      line_format: "ip:port"
+      
+      headers:
+        User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        Accept: "text/plain"
+        
+      supports_protocols: ["http", "https"]
+      trust_level: "medium"
+      
+  # ============================================================================
+  # PREMIUM SOURCES - Paid proxy services (commented out by default)
+  # ============================================================================
+  premium:
+    
+    # Uncomment and configure these sources by adding your API keys
+    
+    # proxymesh:
+    #   enabled: false
+    #   name: "ProxyMesh"
+    #   description: "High-quality rotating proxy service"
+    #   url: "http://open.proxymesh.com/"
+    #   type: "api"
+    #   source_type: "api_endpoint" 
+    #   quality_score: 9
+    #   
+    #   # Authentication
+    #   auth_type: "basic"
+    #   username: "${PROXYMESH_USERNAME}"  # Set in environment
+    #   password: "${PROXYMESH_PASSWORD}"
+    #   
+    #   rate_limit: 10.0
+    #   timeout: 20
+    #   max_proxies: 10000
+    #   concurrent_requests: 5
+    #   
+    #   # Premium features
+    #   supports_protocols: ["http", "https"]
+    #   supports_auth: true
+    #   supports_rotation: true
+    #   geographic_targeting: true
+    #   
+    #   trust_level: "high"
+    #   cost_per_gb: 2.95
+    #   
+    # bright_data:
+    #   enabled: false
+    #   name: "Bright Data"
+    #   description: "Enterprise-grade proxy network"
+    #   url: "https://api.brightdata.com/dca/v2/proxies"
+    #   type: "api"
+    #   source_type: "json"
+    #   quality_score: 10
+    #   
+    #   # API authentication
+    #   auth_type: "bearer"
+    #   api_key: "${BRIGHTDATA_API_KEY}"
+    #   
+    #   rate_limit: 20.0
+    #   timeout: 15
+    #   max_proxies: 50000
+    #   concurrent_requests: 10
+    #   
+    #   # Enterprise features
+    #   supports_protocols: ["http", "https", "socks5"]
+    #   supports_auth: true
+    #   supports_rotation: true
+    #   supports_sticky_sessions: true
+    #   geographic_targeting: true
+    #   isp_targeting: true
+    #   
+    #   trust_level: "enterprise"
+    #   cost_per_gb: 15.00
+    #   
+    # smartproxy:
+    #   enabled: false
+    #   name: "SmartProxy"
+    #   description: "Residential and datacenter proxies"
+    #   url: "https://api.smartproxy.com/v1/endpoints"
+    #   type: "api"
+    #   source_type: "json"
+    #   quality_score: 9
+    #   
+    #   auth_type: "header"
+    #   headers:
+    #     Authorization: "Bearer ${SMARTPROXY_API_KEY}"
+    #   
+    #   rate_limit: 15.0
+    #   timeout: 20
+    #   max_proxies: 20000
+    #   
+    #   supports_protocols: ["http", "https", "socks5"]
+    #   geographic_targeting: true
+    #   trust_level: "high"
+    #   
+    # oxylabs:
+    #   enabled: false
+    #   name: "Oxylabs"
+    #   description: "Advanced proxy solutions"
+    #   url: "https://api.oxylabs.io/v1/endpoints"
+    #   type: "api"
+    #   source_type: "json"
+    #   quality_score: 10
+    #   
+    #   auth_type: "basic"
+    #   username: "${OXYLABS_USERNAME}"
+    #   password: "${OXYLABS_PASSWORD}"
+    #   
+    #   rate_limit: 25.0
+    #   timeout: 15
+    #   max_proxies: 100000
+    #   
+    #   supports_protocols: ["http", "https", "socks5"]
+    #   enterprise_features: true
+    #   trust_level: "enterprise"
+    
+  # ============================================================================
+  # CUSTOM SOURCES - User-defined sources
+  # ============================================================================
+  custom:
+    
+    # Example custom source - users can add their own here
+    # my_private_source:
+    #   enabled: false
+    #   name: "My Private Proxy Source"
+    #   description: "Custom proxy endpoint"
+    #   url: "https://my-proxy-api.example.com/proxies"
+    #   type: "api"
+    #   source_type: "json"
+    #   quality_score: 8
+    #   
+    #   # Custom configuration
+    #   rate_limit: 1.0
+    #   timeout: 30
+    #   max_proxies: 1000
+    #   
+    #   headers:
+    #     X-API-Key: "your-api-key-here"
+    #   
+    #   supports_protocols: ["http", "https"]
+    #   trust_level: "high"
+
+# ============================================================================
+# COLLECTION PROFILES - Pre-defined collection strategies
+# ============================================================================
+profiles:
+  
+  # Fast collection for immediate needs
+  quick_scan:
+    name: "Quick Scan"
+    description: "Fast collection from high-quality sources"
+    max_duration: 300  # 5 minutes
+    max_proxies: 500
+    sources: 
+      - "free.proxyscrape_api"
+      - "free.freeproxy_world"
+    quality_threshold: 6
+    concurrent_sources: 2
+    
+  # Comprehensive collection for large-scale operations
+  deep_hunt:
+    name: "Deep Hunt"
+    description: "Comprehensive collection from all available sources"
+    max_duration: 1800  # 30 minutes
+    max_proxies: 5000
+    sources: ["free.*"]  # All free sources
+    quality_threshold: 4
+    concurrent_sources: 5
+    include_experimental: true
+    
+  # High-quality collection for critical operations
+  premium_quality:
+    name: "Premium Quality"
+    description: "Only high-quality and premium sources"
+    max_duration: 600  # 10 minutes
+    max_proxies: 2000
+    sources:
+      - "free.proxyscrape_api"
+      - "free.hidemy_name"
+      - "free.spys_one"
+      # - "premium.*"  # Uncomment when premium sources are configured
+    quality_threshold: 7
+    concurrent_sources: 3
+    require_validation: true
+    
+  # Geographic-specific collection
+  geo_targeted:
+    name: "Geographic Targeting"
+    description: "Collection focused on specific countries"
+    max_duration: 900  # 15 minutes
+    max_proxies: 1500
+    sources: ["free.*"]
+    quality_threshold: 5
+    geographic_filters:
+      include_countries: ["US", "GB", "DE", "CA", "AU"]
+      exclude_countries: ["CN", "RU", "KP"]
+    concurrent_sources: 4
+
+# ============================================================================
+# SOURCE HEALTH MONITORING
+# ============================================================================
+health_monitoring:
+  
+  # Automatic health checks
+  enabled: true
+  check_interval: 3600  # 1 hour
+  failure_threshold: 3
+  recovery_threshold: 2
+  
+  # Health metrics
+  metrics:
+    - "response_time"
+    - "success_rate"
+    - "proxy_quality"
+    - "error_rate"
+    - "data_freshness"
+    
+  # Automatic actions
+  auto_disable_failed: true
+  auto_enable_recovered: true
+  alert_on_failures: true
+  
+  # Health thresholds
+  thresholds:
+    max_response_time: 30000  # 30 seconds
+    min_success_rate: 0.3     # 30%
+    max_error_rate: 0.7       # 70%
+    min_proxy_count: 10
+
+# ============================================================================
+# ADVANCED SETTINGS
+# ============================================================================
+advanced:
+  
+  # Request optimization
+  connection_pooling: true
+  persistent_sessions: true
+  compression: true
+  
+  # Security settings
+  verify_certificates: false
+  follow_redirects: true
+  max_redirects: 3
+  
+  # Performance tuning
+  max_concurrent_requests: 10
+  request_queue_size: 100
+  worker_thread_count: 5
+  
+  # Data processing
+  normalize_data: true
+  validate_formats: true
+  deduplicate_sources: true
+  
+  # Logging and monitoring
+  log_level: "INFO"
+  log_requests: false
+  log_responses: false
+  metrics_collection: true
+  
+  # Experimental features
+  ai_quality_prediction: false
+  machine_learning_optimization: false
+  blockchain_verification: false

@@ -1,0 +1,70 @@
+{
+  "description": "DNS blacklist services configuration for ProxyHunter",
+  "version": "1.0",
+  "last_updated": "2025-01-08",
+  "services": {
+    "spamhaus_zen": {
+      "hostname": "zen.spamhaus.org",
+      "description": "Spamhaus ZEN - Combined SBL, CSS, XBL and PBL",
+      "enabled": true,
+      "priority": 1,
+      "response_codes": {
+        "127.0.0.2": "SBL - Spam database",
+        "127.0.0.3": "CSS - Content scanning",
+        "127.0.0.9": "PBL - Policy block list",
+        "127.0.0.10": "XBL - Exploit block list"
+      }
+    },
+    "spamhaus_pbl": {
+      "hostname": "pbl.spamhaus.org",
+      "description": "Spamhaus PBL - Policy Block List",
+      "enabled": true,
+      "priority": 2
+    },
+    "barracuda": {
+      "hostname": "b.barracudacentral.org",
+      "description": "Barracuda Reputation Block List",
+      "enabled": true,
+      "priority": 3
+    },
+    "sorbs": {
+      "hostname": "dnsbl.sorbs.net",
+      "description": "SORBS - Spam and Open Relay Blocking System",
+      "enabled": true,
+      "priority": 4
+    },
+    "abuse_ch": {
+      "hostname": "drone.abuse.ch",
+      "description": "Abuse.ch - Botnet drone detection",
+      "enabled": true,
+      "priority": 5
+    },
+    "malwaredomains": {
+      "hostname": "malwaredomains.lehigh.edu",
+      "description": "MalwareDomains IP blacklist",
+      "enabled": false,
+      "priority": 6,
+      "note": "May have high false positive rate"
+    },
+    "uribl_multi": {
+      "hostname": "multi.uribl.com",
+      "description": "URIBL Multi - URI blacklist",
+      "enabled": false,
+      "priority": 7,
+      "note": "Requires commercial license for high volume"
+    },
+    "surbl_multi": {
+      "hostname": "multi.surbl.org",
+      "description": "SURBL Multi - Spam URI realtime blocklist",
+      "enabled": false,
+      "priority": 8,
+      "note": "Requires commercial license for high volume"
+    }
+  },
+  "settings": {
+    "timeout_seconds": 3,
+    "max_concurrent_checks": 5,
+    "cache_ttl_minutes": 60,
+    "retry_attempts": 2
+  }
+}
