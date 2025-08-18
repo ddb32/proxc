@@ -1,0 +1,448 @@
+# ProxC Static URL-Based Proxy Sources Configuration
+# ================================================
+# 
+# This file contains all static URL-based proxy sources including:
+# - Direct links to proxy text files (GitHub raw files, etc.)
+# - HTML table sources that require web scraping
+# - Multi-URL sources that aggregate from several endpoints
+#
+# These sources typically don't require authentication but may need
+# specific parsing configurations for different formats.
+#
+# HOW TO ENABLE/DISABLE SOURCES:
+# - Comment out entire source block with # to disable
+# - Uncomment source block to enable
+# - Alternatively, set enabled: false to disable specific sources
+#
+# PARSING CONFIGURATION:
+# - Text sources: Use proxy_pattern to extract IP:port with regex
+# - HTML sources: Use CSS selectors to target tables and rows
+# - Multi-source: Specify multiple URLs for redundancy
+#
+# Related files:
+# - api_sources.yaml: API-based sources requiring HTTP requests
+# - collection_config.yaml: Global operational settings
+# - README_CONFIGURATION.md: Complete documentation
+#
+# ============================================================================
+
+version: "1.2"
+last_updated: "2024-01-20"
+file_type: "static_sources"
+
+# ============================================================================
+# GITHUB-HOSTED PROXY LISTS
+# ============================================================================
+# Community-maintained proxy lists hosted on GitHub
+# These are usually reliable and frequently updated
+
+github_sources:
+
+  # Multiple GitHub repositories for redundancy
+  github_proxy_lists:
+    name: "GitHub Proxy Collections"
+    description: "Community-maintained proxy lists from multiple GitHub repositories"
+    type: "multi_source"
+    response_format: "text"
+    
+    # Multiple URLs for redundancy and better coverage
+    urls:
+      - "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt"
+      - "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt"
+      - "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt"
+    
+    # Text parsing configuration
+    proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+    line_format: "ip:port"
+    
+    # Request configuration
+    rate_limit: 3.0              # Seconds between requests
+    timeout: 30                  # Request timeout
+    max_proxies: 800            # Limit total proxies from all URLs
+    
+    # Headers
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      Accept: "text/plain"
+      
+    # Quality and features
+    quality_score: 6            # Community sources, decent quality
+    trust_level: "medium"
+    supports_protocols: ["http", "https"]
+    
+    enabled: true
+    notes: "Multiple GitHub sources for better coverage and redundancy"
+
+  # JetKai's proxy lists - well-maintained repository
+  proxyrotator:
+    name: "ProxyRotator GitHub"
+    description: "Well-maintained proxy list from jetkai/proxy-list repository"
+    url: "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-http.txt"
+    type: "text_list"
+    response_format: "text"
+    
+    proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+    line_format: "ip:port"
+    
+    rate_limit: 2.5
+    timeout: 25
+    max_proxies: 300
+    
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      Accept: "text/plain"
+      
+    quality_score: 6
+    trust_level: "medium"
+    supports_protocols: ["http", "https"]
+    
+    enabled: true
+    notes: "Regularly updated, good quality community list"
+
+# ============================================================================
+# DIRECT TEXT FILE SOURCES
+# ============================================================================
+# Direct links to proxy list text files from various websites
+
+text_file_sources:
+
+  # OpenProxy.Space - Simple text list
+  openproxy_space:
+    name: "OpenProxy.Space"
+    description: "Simple and reliable proxy text list"
+    url: "https://openproxy.space/list/http"
+    type: "text_list"
+    response_format: "text"
+    
+    proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+    line_format: "ip:port"
+    
+    rate_limit: 2.0
+    timeout: 20
+    max_proxies: 200
+    
+    headers:
+      User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+      Accept: "text/plain"
+      
+    quality_score: 5
+    trust_level: "low"
+    supports_protocols: ["http"]
+    
+    enabled: true
+    notes: "Basic free source, limited to HTTP proxies"
+
+# ============================================================================
+# HTML TABLE SCRAPING SOURCES
+# ============================================================================
+# Websites that display proxy lists in HTML tables
+# Require web scraping and CSS selector configuration
+
+html_table_sources:
+
+  # ProxyList Plus - HTML table format
+  proxylist_plus:
+    name: "ProxyList Plus"
+    description: "Fresh proxy list updated frequently via HTML table"
+    url: "https://list.proxylistplus.com/Fresh-HTTP-Proxy-List-1"
+    type: "html_table"
+    response_format: "html"
+    
+    # HTML parsing configuration
+    table_selector: "table.bg"   # CSS selector for the proxy table
+    row_selector: "tr"           # CSS selector for table rows
+    column_mapping:              # Map table columns to proxy fields
+      ip: 0                      # IP address in first column (0-indexed)
+      port: 1                    # Port in second column
+      # country: 2               # Country in third column (if available)
+      # anonymity: 3             # Anonymity level (if available)
+    
+    rate_limit: 2.5
+    timeout: 25
+    max_proxies: 250
+    
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      Accept-Language: "en-US,en;q=0.5"
+      
+    quality_score: 5
+    trust_level: "low"
+    supports_protocols: ["http"]
+    
+    enabled: true
+    notes: "Basic HTML scraping, simple table format"
+
+  # HideMyName - Currently disabled due to connection issues
+  # hidemy_name:
+  #   name: "HideMyName Proxy List"
+  #   description: "Popular proxy listing site (currently disabled due to connection issues)"
+  #   url: "https://hidemy.name/en/proxy-list/?maxtime=1000&type=h#list"
+  #   type: "html_table"
+  #   response_format: "html"
+  #   
+  #   # HTML parsing configuration
+  #   table_selector: "table.proxy__t"
+  #   row_selector: "tbody tr"
+  #   column_mapping:
+  #     ip: 0
+  #     port: 1
+  #     country: 2
+  #     anonymity: 4
+  #     protocol: 5
+  #   
+  #   rate_limit: 4.0
+  #   timeout: 30
+  #   max_proxies: 200
+  #   
+  #   headers:
+  #     User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  #     Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+  #     Accept-Language: "en-US,en;q=0.5"
+  #     Referer: "https://hidemy.name/"
+  #     
+  #   quality_score: 6
+  #   trust_level: "medium"
+  #   supports_protocols: ["http", "https"]
+  #   
+  #   enabled: false
+  #   notes: "Disabled - HTTP connection issues as of 2024-01"
+
+# ============================================================================
+# JAVASCRIPT-REQUIRED SOURCES
+# ============================================================================
+# Sources that require JavaScript rendering to access proxy lists
+# These are more complex and may need additional dependencies
+
+javascript_sources:
+
+  # Spys.one - High quality but requires JavaScript
+  # spys_one:
+  #   name: "Spys.one"
+  #   description: "Large proxy database with high quality (requires JavaScript rendering)"
+  #   url: "http://spys.one/en/http-proxy-list/"
+  #   type: "html_table"
+  #   response_format: "html"
+  #   requires_js: true           # Needs JavaScript rendering (Playwright)
+  #   
+  #   # HTML parsing configuration
+  #   table_selector: "table"
+  #   row_selector: "tr"
+  #   column_mapping:
+  #     ip: 0
+  #     port: 1
+  #     country: 3
+  #     anonymity: 4
+  #     protocol: 5
+  #   
+  #   rate_limit: 5.0
+  #   timeout: 45
+  #   max_proxies: 500
+  #   
+  #   # JavaScript rendering settings
+  #   js_wait_time: 3000          # Wait 3 seconds for JS to load
+  #   js_wait_selector: "table"   # Wait for table to appear
+  #   
+  #   headers:
+  #     User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  #     Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+  #     
+  #   quality_score: 8
+  #   trust_level: "high"
+  #   supports_protocols: ["http", "https", "socks4", "socks5"]
+  #   
+  #   enabled: false
+  #   notes: "High quality source but requires JavaScript rendering capability"
+
+# ============================================================================
+# CUSTOM STATIC SOURCES
+# ============================================================================
+# Add your own static URL sources here
+
+custom_static_sources:
+
+  # Example custom text source
+  # my_custom_text_source:
+  #   name: "My Custom Text Source"
+  #   description: "Custom proxy text file"
+  #   url: "https://my-site.example.com/proxies.txt"
+  #   type: "text_list"
+  #   response_format: "text"
+  #   
+  #   proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+  #   line_format: "ip:port"
+  #   
+  #   rate_limit: 2.0
+  #   timeout: 30
+  #   max_proxies: 500
+  #   
+  #   headers:
+  #     User-Agent: "ProxC/2.0"
+  #     
+  #   quality_score: 7
+  #   trust_level: "high"
+  #   
+  #   enabled: false
+  #   notes: "Add your custom text source configuration here"
+
+  # Example custom HTML table source
+  # my_custom_html_source:
+  #   name: "My Custom HTML Source"
+  #   description: "Custom HTML table with proxy list"
+  #   url: "https://my-site.example.com/proxy-table.html"
+  #   type: "html_table"
+  #   response_format: "html"
+  #   
+  #   table_selector: "table.proxies"
+  #   row_selector: "tbody tr"
+  #   column_mapping:
+  #     ip: 0
+  #     port: 1
+  #     country: 2
+  #     protocol: 3
+  #   
+  #   rate_limit: 3.0
+  #   timeout: 30
+  #   max_proxies: 300
+  #   
+  #   headers:
+  #     User-Agent: "ProxC/2.0"
+  #     Referer: "https://my-site.example.com/"
+  #     
+  #   quality_score: 8
+  #   trust_level: "high"
+  #   
+  #   enabled: false
+  #   notes: "Add your custom HTML source configuration here"
+
+  # Example multi-source configuration
+  # my_multi_source:
+  #   name: "My Multi-Source Collection"
+  #   description: "Multiple URLs from different sources"
+  #   type: "multi_source"
+  #   response_format: "text"
+  #   
+  #   urls:
+  #     - "https://source1.example.com/proxies.txt"
+  #     - "https://source2.example.com/proxy-list.txt"
+  #     - "https://source3.example.com/http-proxies.txt"
+  #   
+  #   proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+  #   line_format: "ip:port"
+  #   
+  #   rate_limit: 2.0
+  #   timeout: 30
+  #   max_proxies: 1000
+  #   
+  #   headers:
+  #     User-Agent: "ProxC/2.0"
+  #     
+  #   quality_score: 6
+  #   trust_level: "medium"
+  #   
+  #   enabled: false
+  #   notes: "Aggregate from multiple text sources"
+
+# ============================================================================
+# SOURCE TEMPLATES
+# ============================================================================
+# Common patterns for different static source types
+
+templates:
+
+  # Text file template
+  # text_source_template:
+  #   name: "Text Source Template"
+  #   description: "Template for text-based proxy sources"
+  #   url: "https://example.com/proxies.txt"
+  #   type: "text_list"
+  #   response_format: "text"
+  #   
+  #   # Text parsing
+  #   proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+  #   line_format: "ip:port"
+  #   
+  #   rate_limit: 2.0
+  #   timeout: 30
+  #   max_proxies: 500
+  #   
+  #   headers:
+  #     User-Agent: "ProxC/2.0"
+  #     Accept: "text/plain"
+  #     
+  #   quality_score: 5
+  #   enabled: false
+
+  # HTML table template
+  # html_table_template:
+  #   name: "HTML Table Template"
+  #   description: "Template for HTML table proxy sources"
+  #   url: "https://example.com/proxy-table.html"
+  #   type: "html_table"
+  #   response_format: "html"
+  #   
+  #   # HTML parsing configuration
+  #   table_selector: "table"      # CSS selector for table
+  #   row_selector: "tr"           # CSS selector for rows
+  #   column_mapping:              # Map columns to fields
+  #     ip: 0                      # IP in first column
+  #     port: 1                    # Port in second column
+  #     country: 2                 # Country in third column
+  #     protocol: 3                # Protocol in fourth column
+  #   
+  #   rate_limit: 3.0
+  #   timeout: 30
+  #   max_proxies: 300
+  #   
+  #   headers:
+  #     User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  #     Accept: "text/html,application/xhtml+xml"
+  #     
+  #   quality_score: 5
+  #   enabled: false
+
+# ============================================================================
+# CONFIGURATION NOTES
+# ============================================================================
+# 
+# TEXT PARSING PATTERNS:
+# Most common patterns for IP:port extraction:
+# - Standard: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+# - With protocol: 'https?://(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+# - SOCKS format: 'socks[45]?://(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+# 
+# HTML TABLE CONFIGURATION:
+# - table_selector: CSS selector to find the proxy table
+# - row_selector: CSS selector to find table rows within the table
+# - column_mapping: Maps column indices to proxy fields
+#   Common fields: ip, port, country, protocol, anonymity, speed
+# 
+# MULTI-SOURCE CONFIGURATION:
+# - urls: Array of URLs to fetch from
+# - All URLs are processed with the same parsing configuration
+# - Failed URLs are skipped automatically
+# - Total max_proxies applies to combined results
+# 
+# JAVASCRIPT SOURCES:
+# - requires_js: true indicates JavaScript rendering needed
+# - Requires Playwright or similar browser automation
+# - js_wait_time: Milliseconds to wait for JS execution
+# - js_wait_selector: CSS selector to wait for before scraping
+# 
+# QUALITY SCORES (1-10):
+# - 1-3: Unreliable sources, frequent failures
+# - 4-6: Average quality, basic functionality  
+# - 7-8: Good quality, reliable with good uptime
+# - 9-10: Excellent quality, professional-grade
+# 
+# TRUST LEVELS:
+# - "low": Basic sources, minimal validation
+# - "medium": Established sources with track record
+# - "high": Premium sources with advanced features
+# 
+# RATE LIMITING:
+# - GitHub: 3-5 seconds recommended to avoid rate limits
+# - Public sites: 2-3 seconds to be respectful
+# - HTML scraping: 3-5 seconds to avoid detection
+# 
+# ============================================================================

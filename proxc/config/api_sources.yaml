@@ -1,0 +1,437 @@
+# ProxC API-Based Proxy Sources Configuration
+# ==========================================
+# 
+# This file contains all API-based proxy sources that require HTTP requests
+# to retrieve proxy lists. These sources typically provide JSON or text responses
+# and may require authentication, rate limiting, or special headers.
+#
+# HOW TO ENABLE/DISABLE SOURCES:
+# - Comment out entire source block with # to disable
+# - Uncomment source block to enable
+# - Alternatively, set enabled: false to disable specific sources
+#
+# AUTHENTICATION:
+# - Use environment variables for API keys: ${VARIABLE_NAME}
+# - Set environment variables before running ProxC
+# - Never commit API keys to version control
+#
+# RATE LIMITING:
+# - Respect source rate limits to avoid getting blocked
+# - Adjust rate_limit values based on source requirements
+# - Monitor logs for rate limit responses
+#
+# Related files:
+# - static_sources.yaml: Direct URL sources (GitHub lists, text files)
+# - collection_config.yaml: Global operational settings
+# - README_CONFIGURATION.md: Complete documentation
+#
+# ============================================================================
+
+version: "1.2"
+last_updated: "2024-01-20"
+file_type: "api_sources"
+
+# ============================================================================
+# FREE API SOURCES
+# ============================================================================
+# These sources provide free proxy lists through APIs
+# Most require no authentication but have rate limits
+
+free_apis:
+
+  # ProxyScrape - Popular free proxy API
+  proxyscrape_api:
+    name: "ProxyScrape API"
+    description: "Popular free proxy API with good coverage and reliability"
+    url: "https://api.proxyscrape.com/v2/?request=get&format=textplain&protocol=http&timeout=5000&country=all&ssl=all&anonymity=all"
+    type: "api"
+    response_format: "text"
+    
+    # Request configuration
+    rate_limit: 3.0              # Seconds between requests
+    timeout: 30                  # Request timeout in seconds
+    max_proxies: 1000           # Maximum proxies to collect
+    concurrent_requests: 1       # Number of concurrent requests
+    max_retries: 3              # Retry failed requests
+    
+    # Parsing configuration
+    proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+    line_format: "ip:port"
+    
+    # Headers
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      Accept: "text/plain"
+      
+    # Quality and protocol support
+    quality_score: 7            # 1-10 scale (7 is good)
+    trust_level: "medium"
+    supports_protocols: ["http", "https"]
+    supports_countries: ["US", "GB", "DE", "FR", "CA", "AU"]
+    
+    # Status
+    enabled: true
+    notes: "Reliable free API with good uptime"
+
+  # Proxy-List.Download - Simple API endpoint
+  proxy_list_download_api:
+    name: "Proxy-List.Download API"
+    description: "Simple API endpoint providing HTTP proxy lists"
+    url: "https://www.proxy-list.download/api/v1/get?type=http"
+    type: "api"
+    response_format: "text"
+    
+    rate_limit: 2.0
+    timeout: 20
+    max_proxies: 300
+    
+    proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+    line_format: "ip:port"
+    
+    headers:
+      User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+      Accept: "text/plain"
+      
+    quality_score: 5
+    trust_level: "low"
+    supports_protocols: ["http"]
+    enabled: true
+    notes: "Basic free API, limited features"
+
+  # FreeProxy.World - Currently disabled due to API issues
+  # freeproxy_world:
+  #   name: "FreeProxy.World API"
+  #   description: "Free proxy service with JSON API (currently disabled due to API changes)"
+  #   url: "https://www.freeproxy.world/api/proxy"
+  #   type: "api"
+  #   response_format: "json"
+  #   
+  #   rate_limit: 2.0
+  #   timeout: 25
+  #   max_proxies: 500
+  #   
+  #   # JSON parsing configuration
+  #   json_path: "$.data[*]"      # JSONPath to proxy array
+  #   response_format:
+  #     ip_field: "ip"
+  #     port_field: "port"
+  #     protocol_field: "protocols"
+  #     country_field: "country"
+  #     anonymity_field: "anonymity"
+  #   
+  #   headers:
+  #     User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+  #     Accept: "application/json"
+  #     
+  #   quality_score: 6
+  #   trust_level: "medium"
+  #   supports_protocols: ["http", "https"]
+  #   enabled: false
+  #   notes: "Disabled - API access issues as of 2024-01"
+
+# ============================================================================
+# PREMIUM API SOURCES
+# ============================================================================
+# Professional proxy services that require paid subscriptions
+# Set up environment variables for authentication before enabling
+
+premium_apis:
+
+  # Bright Data (formerly Luminati) - Enterprise grade
+  # bright_data:
+  #   name: "Bright Data"
+  #   description: "Enterprise-grade proxy network with global coverage"
+  #   url: "https://api.brightdata.com/dca/v2/proxies"
+  #   type: "api"
+  #   response_format: "json"
+  #   
+  #   # Authentication - set BRIGHTDATA_API_KEY environment variable
+  #   auth_type: "bearer"
+  #   api_key: "${BRIGHTDATA_API_KEY}"
+  #   
+  #   # Request configuration
+  #   rate_limit: 20.0            # Higher rate limit for premium
+  #   timeout: 15                 # Faster timeouts expected
+  #   max_proxies: 50000         # Large proxy pools
+  #   concurrent_requests: 10     # Higher concurrency allowed
+  #   
+  #   # JSON parsing
+  #   json_path: "$.endpoints[*]"
+  #   response_format:
+  #     ip_field: "endpoint"
+  #     port_field: "port"
+  #     protocol_field: "protocol"
+  #     country_field: "country"
+  #     city_field: "city"
+  #   
+  #   # Headers
+  #   headers:
+  #     Accept: "application/json"
+  #     Content-Type: "application/json"
+  #     
+  #   # Enterprise features
+  #   quality_score: 10
+  #   trust_level: "enterprise"
+  #   supports_protocols: ["http", "https", "socks5"]
+  #   supports_auth: true
+  #   supports_rotation: true
+  #   supports_sticky_sessions: true
+  #   geographic_targeting: true
+  #   isp_targeting: true
+  #   
+  #   # Cost tracking
+  #   cost_per_gb: 15.00
+  #   billing_model: "pay_per_gb"
+  #   
+  #   enabled: false
+  #   notes: "Premium service - requires API key and billing setup"
+
+  # Oxylabs - Advanced proxy solutions
+  # oxylabs:
+  #   name: "Oxylabs"
+  #   description: "Advanced proxy solutions with residential and datacenter options"
+  #   url: "https://api.oxylabs.io/v1/endpoints"
+  #   type: "api"
+  #   response_format: "json"
+  #   
+  #   # Authentication - basic auth
+  #   auth_type: "basic"
+  #   username: "${OXYLABS_USERNAME}"
+  #   password: "${OXYLABS_PASSWORD}"
+  #   
+  #   rate_limit: 25.0
+  #   timeout: 15
+  #   max_proxies: 100000
+  #   concurrent_requests: 15
+  #   
+  #   json_path: "$.results[*]"
+  #   response_format:
+  #     ip_field: "endpoint"
+  #     port_field: "port"
+  #     country_field: "country_code"
+  #     protocol_field: "protocol"
+  #   
+  #   headers:
+  #     Accept: "application/json"
+  #     User-Agent: "ProxC/2.0 Enterprise"
+  #     
+  #   quality_score: 10
+  #   trust_level: "enterprise"
+  #   supports_protocols: ["http", "https", "socks5"]
+  #   geographic_targeting: true
+  #   enterprise_features: true
+  #   
+  #   enabled: false
+  #   notes: "Enterprise service with advanced targeting features"
+
+  # SmartProxy - Residential and datacenter proxies
+  # smartproxy:
+  #   name: "SmartProxy"
+  #   description: "Residential and datacenter proxies with good performance"
+  #   url: "https://api.smartproxy.com/v1/endpoints"
+  #   type: "api"
+  #   response_format: "json"
+  #   
+  #   # Authentication - API key in header
+  #   auth_type: "header"
+  #   headers:
+  #     Authorization: "Bearer ${SMARTPROXY_API_KEY}"
+  #     Accept: "application/json"
+  #     Content-Type: "application/json"
+  #   
+  #   rate_limit: 15.0
+  #   timeout: 20
+  #   max_proxies: 20000
+  #   concurrent_requests: 8
+  #   
+  #   json_path: "$.data.endpoints[*]"
+  #   response_format:
+  #     ip_field: "endpoint"
+  #     port_field: "port"
+  #     country_field: "country"
+  #     protocol_field: "type"
+  #   
+  #   quality_score: 9
+  #   trust_level: "high"
+  #   supports_protocols: ["http", "https", "socks5"]
+  #   geographic_targeting: true
+  #   cost_per_gb: 8.50
+  #   
+  #   enabled: false
+  #   notes: "Good balance of features and pricing"
+
+  # ProxyMesh - Rotating proxy service
+  # proxymesh:
+  #   name: "ProxyMesh"
+  #   description: "High-quality rotating proxy service"
+  #   url: "http://open.proxymesh.com/api/proxies"
+  #   type: "api"
+  #   response_format: "json"
+  #   
+  #   # Authentication
+  #   auth_type: "basic"
+  #   username: "${PROXYMESH_USERNAME}"
+  #   password: "${PROXYMESH_PASSWORD}"
+  #   
+  #   rate_limit: 10.0
+  #   timeout: 20
+  #   max_proxies: 10000
+  #   concurrent_requests: 5
+  #   
+  #   json_path: "$.proxies[*]"
+  #   response_format:
+  #     ip_field: "ip"
+  #     port_field: "port"
+  #     protocol_field: "protocol"
+  #   
+  #   headers:
+  #     Accept: "application/json"
+  #     
+  #   quality_score: 9
+  #   trust_level: "high"
+  #   supports_protocols: ["http", "https"]
+  #   supports_auth: true
+  #   supports_rotation: true
+  #   cost_per_gb: 2.95
+  #   
+  #   enabled: false
+  #   notes: "Reliable rotating service with good support"
+
+# ============================================================================
+# CUSTOM API SOURCES
+# ============================================================================
+# Add your own API sources here
+# Copy one of the examples above and modify as needed
+
+custom_apis:
+
+  # Example custom source - modify as needed
+  # my_custom_api:
+  #   name: "My Custom API"
+  #   description: "Custom proxy API endpoint"
+  #   url: "https://my-proxy-api.example.com/proxies"
+  #   type: "api"
+  #   response_format: "json"
+  #   
+  #   # Authentication if needed
+  #   auth_type: "api_key"
+  #   api_key: "${MY_API_KEY}"
+  #   
+  #   rate_limit: 5.0
+  #   timeout: 30
+  #   max_proxies: 1000
+  #   
+  #   # Adjust parsing based on your API response format
+  #   json_path: "$.proxies[*]"
+  #   response_format:
+  #     ip_field: "host"
+  #     port_field: "port"
+  #     protocol_field: "type"
+  #   
+  #   headers:
+  #     X-API-Key: "${MY_API_KEY}"
+  #     User-Agent: "ProxC/2.0"
+  #     
+  #   quality_score: 8
+  #   trust_level: "high"
+  #   supports_protocols: ["http", "https"]
+  #   
+  #   enabled: false
+  #   notes: "Add your custom API configuration here"
+
+# ============================================================================
+# API SOURCE TEMPLATES
+# ============================================================================
+# Common patterns for different API types
+# Uncomment and modify as needed for new sources
+
+templates:
+
+  # JSON API Template
+  # json_api_template:
+  #   name: "JSON API Template"
+  #   description: "Template for JSON-based proxy APIs"
+  #   url: "https://api.example.com/proxies"
+  #   type: "api"
+  #   response_format: "json"
+  #   
+  #   # Request settings
+  #   rate_limit: 2.0
+  #   timeout: 30
+  #   max_proxies: 1000
+  #   
+  #   # JSON parsing - adjust based on API response structure
+  #   json_path: "$.data[*]"      # JSONPath to proxy array
+  #   response_format:
+  #     ip_field: "ip"            # Field containing IP address
+  #     port_field: "port"        # Field containing port number
+  #     protocol_field: "protocol" # Field containing protocol type
+  #     country_field: "country"  # Field containing country code
+  #     anonymity_field: "level"  # Field containing anonymity level
+  #   
+  #   headers:
+  #     Accept: "application/json"
+  #     User-Agent: "ProxC/2.0"
+  #     
+  #   quality_score: 5
+  #   enabled: false
+
+  # Text API Template
+  # text_api_template:
+  #   name: "Text API Template"
+  #   description: "Template for text-based proxy APIs"
+  #   url: "https://api.example.com/proxies.txt"
+  #   type: "api"
+  #   response_format: "text"
+  #   
+  #   rate_limit: 2.0
+  #   timeout: 30
+  #   max_proxies: 1000
+  #   
+  #   # Text parsing
+  #   proxy_pattern: '(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})'
+  #   line_format: "ip:port"
+  #   
+  #   headers:
+  #     Accept: "text/plain"
+  #     User-Agent: "ProxC/2.0"
+  #     
+  #   quality_score: 5
+  #   enabled: false
+
+# ============================================================================
+# CONFIGURATION NOTES
+# ============================================================================
+# 
+# AUTHENTICATION TYPES:
+# - "bearer": Uses Authorization: Bearer <token> header
+# - "basic": Uses HTTP Basic authentication (username:password)
+# - "api_key": Uses X-API-Key header
+# - "header": Uses custom headers for authentication
+# 
+# RESPONSE FORMATS:
+# - "json": Parse JSON response using json_path and response_format
+# - "text": Parse text response using proxy_pattern
+# 
+# QUALITY SCORES (1-10):
+# - 1-3: Poor quality, unreliable sources
+# - 4-6: Average quality, basic functionality
+# - 7-8: Good quality, reliable with good features
+# - 9-10: Excellent quality, premium/enterprise grade
+# 
+# TRUST LEVELS:
+# - "low": Basic sources, minimal validation
+# - "medium": Established sources with good track record
+# - "high": Premium sources with advanced features
+# - "enterprise": Enterprise-grade with SLAs and support
+# 
+# ENVIRONMENT VARIABLES:
+# Set these before running ProxC:
+# export BRIGHTDATA_API_KEY="your_key_here"
+# export OXYLABS_USERNAME="your_username"
+# export OXYLABS_PASSWORD="your_password"
+# export SMARTPROXY_API_KEY="your_key_here"
+# export PROXYMESH_USERNAME="your_username"
+# export PROXYMESH_PASSWORD="your_password"
+# 
+# ============================================================================

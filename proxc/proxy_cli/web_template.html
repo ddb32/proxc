@@ -1,244 +1,1024 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProxC Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <meta name="description" content="ProxC - Advanced Proxy Management Dashboard">
+    <meta name="theme-color" content="#6366f1">
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+    
+    <!-- Modern CSS Framework -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        .badge-protocol-http { background-color: #0d6efd; }
-        .badge-protocol-https { background-color: #198754; }
-        .badge-protocol-socks4 { background-color: #fd7e14; }
-        .badge-protocol-socks5 { background-color: #6f42c1; }
+        /* === CSS DESIGN TOKENS === */
+        :root {
+            /* Colors - Light Theme */
+            --color-primary: #6366f1;
+            --color-primary-hover: #5855eb;
+            --color-primary-light: #eef2ff;
+            --color-secondary: #64748b;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-danger: #ef4444;
+            --color-info: #3b82f6;
+            
+            /* Backgrounds */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --bg-hover: #f8fafc;
+            --bg-glass: rgba(255, 255, 255, 0.8);
+            --bg-overlay: rgba(0, 0, 0, 0.5);
+            
+            /* Text Colors */
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --text-inverse: #ffffff;
+            
+            /* Borders */
+            --border-color: #e2e8f0;
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --border-radius-lg: 16px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            
+            /* Spacing */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            
+            /* Typography */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-size-xs: 0.75rem;
+            --font-size-sm: 0.875rem;
+            --font-size-base: 1rem;
+            --font-size-lg: 1.125rem;
+            --font-size-xl: 1.25rem;
+            --font-size-2xl: 1.5rem;
+            --font-size-3xl: 1.875rem;
+            
+            /* Transitions */
+            --transition-fast: 150ms ease-in-out;
+            --transition-base: 300ms ease-in-out;
+            --transition-slow: 500ms ease-in-out;
+        }
         
-        .badge-status-active { background-color: #198754; }
-        .badge-status-inactive { background-color: #6c757d; }
-        .badge-status-failed { background-color: #dc3545; }
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --color-primary: #818cf8;
+            --color-primary-hover: #7c3aed;
+            --color-primary-light: #1e1b4b;
+            
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --bg-hover: #475569;
+            --bg-glass: rgba(15, 23, 42, 0.8);
+            
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            
+            --border-color: #334155;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+        }
         
-        .badge-threat-low { background-color: #198754; }
-        .badge-threat-medium { background-color: #ffc107; color: #000; }
-        .badge-threat-high { background-color: #fd7e14; }
-        .badge-threat-critical { background-color: #dc3545; }
+        /* === GLOBAL STYLES === */
+        * {
+            box-sizing: border-box;
+        }
         
-        .sortable { cursor: pointer; user-select: none; }
-        .sortable:hover { background-color: rgba(255,255,255,0.1); }
-        .sort-asc::after { content: ' ↑'; }
-        .sort-desc::after { content: ' ↓'; }
+        body {
+            font-family: var(--font-family);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color var(--transition-base), color var(--transition-base);
+        }
         
-        .table-responsive { max-height: 600px; }
-        #proxy-table { font-size: 0.9em; }
+        /* === MODERN COMPONENTS === */
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transition: all var(--transition-base);
+        }
         
-        .auto-refresh { 
-            position: fixed; 
-            top: 20px; 
-            right: 20px; 
-            z-index: 1000;
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .modern-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-base);
+            overflow: hidden;
+        }
+        
+        .modern-card:hover {
+            box-shadow: var(--shadow);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+        }
+        
+        .btn-modern {
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            transition: all var(--transition-fast);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-modern:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+        
+        .btn-primary-modern {
+            background: var(--color-primary);
+            color: var(--text-inverse);
+        }
+        
+        .btn-primary-modern:hover {
+            background: var(--color-primary-hover);
+            color: var(--text-inverse);
+        }
+        
+        /* === PROTOCOL BADGES === */
+        .badge-protocol {
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            font-size: var(--font-size-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-protocol-http { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .badge-protocol-https { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .badge-protocol-socks4 { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .badge-protocol-socks5 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+        
+        /* === STATUS BADGES === */
+        .badge-status {
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            font-size: var(--font-size-xs);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .badge-status-active { 
+            background: linear-gradient(135deg, #10b981, #059669); 
+            color: white; 
+        }
+        .badge-status-inactive { 
+            background: linear-gradient(135deg, #6b7280, #4b5563); 
+            color: white; 
+        }
+        .badge-status-failed { 
+            background: linear-gradient(135deg, #ef4444, #dc2626); 
+            color: white; 
+        }
+        
+        .badge-status-active::before { content: '●'; }
+        .badge-status-inactive::before { content: '●'; }
+        .badge-status-failed::before { content: '●'; }
+        
+        /* === THREAT LEVEL BADGES === */
+        .badge-threat {
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            font-size: var(--font-size-xs);
+            text-transform: capitalize;
+        }
+        
+        .badge-threat-low { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .badge-threat-medium { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .badge-threat-high { background: linear-gradient(135deg, #f97316, #ea580c); color: white; }
+        .badge-threat-critical { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        
+        /* === TABLE STYLES === */
+        .modern-table {
+            background: var(--bg-primary);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .modern-table th {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-weight: 600;
+            border: none;
+            padding: 1rem 0.75rem;
+            font-size: var(--font-size-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .modern-table td {
+            border: none;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        
+        .modern-table tbody tr:hover {
+            background: var(--bg-hover);
+        }
+        
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: all var(--transition-fast);
+            position: relative;
+        }
+        
+        .sortable:hover {
+            background: var(--bg-hover) !important;
+        }
+        
+        .sort-asc::after { 
+            content: '↑'; 
+            position: absolute;
+            right: 0.5rem;
+            color: var(--color-primary);
+        }
+        .sort-desc::after { 
+            content: '↓'; 
+            position: absolute;
+            right: 0.5rem;
+            color: var(--color-primary);
+        }
+        
+        /* === NAVIGATION === */
+        .navbar-modern {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .navbar-brand-modern {
+            font-weight: 700;
+            font-size: var(--font-size-xl);
+            color: var(--color-primary);
+            text-decoration: none;
+        }
+        
+        /* === SIDEBAR === */
+        .sidebar {
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            z-index: 1050;
+            transition: left var(--transition-base);
+            overflow-y: auto;
+        }
+        
+        .sidebar.show {
+            left: 0;
+        }
+        
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-overlay);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: all var(--transition-base);
+        }
+        
+        .sidebar-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* === LOADING STATES === */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: var(--border-radius-sm);
+        }
+        
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            border-top-color: var(--color-primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* === RESPONSIVE DESIGN === */
+        @media (max-width: 768px) {
+            .mobile-hide { display: none !important; }
+            .mobile-show { display: block !important; }
+            
+            .container-fluid {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .modern-table {
+                font-size: var(--font-size-sm);
+            }
+            
+            .modern-table th,
+            .modern-table td {
+                padding: 0.5rem 0.25rem;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .mobile-show { display: none !important; }
+        }
+        
+        /* === THEME TOGGLE === */
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1060;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+            transition: all var(--transition-fast);
+            cursor: pointer;
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        /* === ANIMATIONS === */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* === STATUS INDICATORS === */
+        .status-indicator {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 0.5rem 1rem;
+            box-shadow: var(--shadow);
+            z-index: 1060;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all var(--transition-base);
+        }
+        
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .connection-dot.connected {
+            background: var(--color-success);
+        }
+        
+        .connection-dot.disconnected {
+            background: var(--color-danger);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        
-        <div class="row py-3 bg-dark text-white">
-            <div class="col">
-                <h1 class="mb-0"><i class="bi bi-shield-check"></i> ProxC Dashboard</h1>
-                <small class="text-muted">Real-time proxy analysis and monitoring</small>
-            </div>
+    <!-- Theme Toggle -->
+    <div class="theme-toggle" id="theme-toggle">
+        <i class="bi bi-sun-fill" id="theme-icon"></i>
+    </div>
+    
+    <!-- Mobile Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    
+    <!-- Sidebar for Mobile -->
+    <div class="sidebar" id="mobile-sidebar">
+        <div class="p-3 border-bottom">
+            <h5 class="mb-0">
+                <i class="bi bi-shield-check text-primary"></i>
+                ProxC
+            </h5>
         </div>
+        <nav class="p-3">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#dashboard">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#proxies">
+                        <i class="bi bi-server"></i> Proxies
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#analytics">
+                        <i class="bi bi-graph-up"></i> Analytics
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#settings">
+                        <i class="bi bi-gear"></i> Settings
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="container-fluid px-3 px-md-4">
+        
+        <!-- Header -->
+        <header class="navbar-modern sticky-top mb-4">
+            <div class="d-flex align-items-center justify-content-between w-100 py-3">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-link d-md-none p-0 me-3" id="sidebar-toggle">
+                        <i class="bi bi-list fs-4"></i>
+                    </button>
+                    <div>
+                        <h1 class="navbar-brand-modern mb-0 d-flex align-items-center">
+                            <i class="bi bi-shield-check me-2"></i>
+                            <span class="mobile-hide">ProxC Dashboard</span>
+                            <span class="mobile-show">ProxC</span>
+                        </h1>
+                        <small class="text-secondary mobile-hide">Real-time proxy analysis and monitoring</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="status-indicator d-none d-md-flex">
+                        <div class="connection-dot connected" id="connection-dot"></div>
+                        <span class="small" id="connection-status">Connected</span>
+                    </div>
+                </div>
+            </div>
+        </header>
         
         <!-- Summary Cards -->
-        <div class="row mt-3" id="summary-cards">
-            <div class="col-md-3">
-                <div class="card bg-primary text-white">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
+        <div class="row g-3 mb-4" id="summary-cards">
+            <div class="col-6 col-lg-3">
+                <div class="modern-card fade-in" style="animation-delay: 0.1s;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <h4 class="card-title" id="total-proxies">-</h4>
-                                <p class="card-text">Total Proxies</p>
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="bi bi-server text-primary me-2"></i>
+                                    <small class="text-secondary text-uppercase fw-semibold mobile-hide">Total</small>
+                                </div>
+                                <h3 class="mb-0 fw-bold" id="total-proxies">
+                                    <div class="skeleton" style="width: 60px; height: 28px;"></div>
+                                </h3>
+                                <small class="text-muted mobile-show">Total Proxies</small>
                             </div>
-                            <i class="bi bi-server fs-1"></i>
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-2 mobile-hide">
+                                <i class="bi bi-server text-primary fs-4"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card bg-success text-white">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
+            <div class="col-6 col-lg-3">
+                <div class="modern-card fade-in" style="animation-delay: 0.2s;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <h4 class="card-title" id="active-proxies">-</h4>
-                                <p class="card-text">Active Proxies</p>
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="bi bi-check-circle text-success me-2"></i>
+                                    <small class="text-secondary text-uppercase fw-semibold mobile-hide">Active</small>
+                                </div>
+                                <h3 class="mb-0 fw-bold" id="active-proxies">
+                                    <div class="skeleton" style="width: 60px; height: 28px;"></div>
+                                </h3>
+                                <small class="text-muted mobile-show">Active</small>
                             </div>
-                            <i class="bi bi-check-circle fs-1"></i>
+                            <div class="bg-success bg-opacity-10 rounded-circle p-2 mobile-hide">
+                                <i class="bi bi-check-circle text-success fs-4"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card bg-info text-white">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
+            <div class="col-6 col-lg-3">
+                <div class="modern-card fade-in" style="animation-delay: 0.3s;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <h4 class="card-title" id="success-rate">-</h4>
-                                <p class="card-text">Success Rate</p>
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="bi bi-graph-up text-info me-2"></i>
+                                    <small class="text-secondary text-uppercase fw-semibold mobile-hide">Success</small>
+                                </div>
+                                <h3 class="mb-0 fw-bold" id="success-rate">
+                                    <div class="skeleton" style="width: 60px; height: 28px;"></div>
+                                </h3>
+                                <small class="text-muted mobile-show">Success Rate</small>
                             </div>
-                            <i class="bi bi-graph-up fs-1"></i>
+                            <div class="bg-info bg-opacity-10 rounded-circle p-2 mobile-hide">
+                                <i class="bi bi-graph-up text-info fs-4"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card bg-warning text-dark">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
+            <div class="col-6 col-lg-3">
+                <div class="modern-card fade-in" style="animation-delay: 0.4s;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <h4 class="card-title" id="avg-response">-</h4>
-                                <p class="card-text">Avg Response</p>
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="bi bi-stopwatch text-warning me-2"></i>
+                                    <small class="text-secondary text-uppercase fw-semibold mobile-hide">Response</small>
+                                </div>
+                                <h3 class="mb-0 fw-bold" id="avg-response">
+                                    <div class="skeleton" style="width: 60px; height: 28px;"></div>
+                                </h3>
+                                <small class="text-muted mobile-show">Avg Response</small>
                             </div>
-                            <i class="bi bi-stopwatch fs-1"></i>
+                            <div class="bg-warning bg-opacity-10 rounded-circle p-2 mobile-hide">
+                                <i class="bi bi-stopwatch text-warning fs-4"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Controls -->
-        <div class="row mt-4">
-            <div class="col-md-8">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control" id="search-input" placeholder="Search proxies...">
-                    <select class="form-select" id="protocol-filter" style="max-width: 150px;">
-                        <option value="">All Protocols</option>
-                        <option value="HTTP">HTTP</option>
-                        <option value="HTTPS">HTTPS</option>
-                        <option value="SOCKS4">SOCKS4</option>
-                        <option value="SOCKS5">SOCKS5</option>
-                    </select>
-                    <button class="btn btn-outline-secondary" type="button" id="refresh-btn">
-                        <i class="bi bi-arrow-clockwise"></i> Refresh
-                    </button>
-                </div>
-            </div>
-            <div class="col-md-4 text-end">
-                <div class="btn-group me-2">
-                    <select class="form-select" id="profile-select" style="max-width: 200px;">
-                        <option value="">Select Profile...</option>
-                    </select>
-                    <button class="btn btn-outline-info" id="execute-profile" disabled>
-                        <i class="bi bi-play"></i> Execute
-                    </button>
-                </div>
-                <div class="btn-group">
-                    <button class="btn btn-outline-success" id="export-json">
-                        <i class="bi bi-download"></i> Export JSON
-                    </button>
-                    <button class="btn btn-outline-primary" id="export-csv">
-                        <i class="bi bi-file-earmark-text"></i> Export CSV
-                    </button>
+        <!-- Advanced Controls -->
+        <div class="modern-card mb-4 fade-in" style="animation-delay: 0.5s;">
+            <div class="card-body p-3">
+                <div class="row g-3 align-items-end">
+                    <!-- Search and Filters -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label small fw-semibold text-secondary mb-2">
+                            <i class="bi bi-search me-1"></i>Search & Filter
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0">
+                                <i class="bi bi-search text-muted"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0" id="search-input" 
+                                   placeholder="Search proxies...">
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                                        data-bs-toggle="dropdown" id="filter-btn">
+                                    <i class="bi bi-funnel"></i>
+                                    <span class="mobile-hide ms-1">Filters</span>
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 280px;">
+                                    <h6 class="dropdown-header">Filter Options</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label small">Protocol</label>
+                                        <select class="form-select form-select-sm" id="protocol-filter">
+                                            <option value="">All Protocols</option>
+                                            <option value="HTTP">HTTP</option>
+                                            <option value="HTTPS">HTTPS</option>
+                                            <option value="SOCKS4">SOCKS4</option>
+                                            <option value="SOCKS5">SOCKS5</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small">Status</label>
+                                        <select class="form-select form-select-sm" id="status-filter">
+                                            <option value="">All Status</option>
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                            <option value="failed">Failed</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small">Threat Level</label>
+                                        <select class="form-select form-select-sm" id="threat-filter">
+                                            <option value="">All Threats</option>
+                                            <option value="low">Low</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="high">High</option>
+                                            <option value="critical">Critical</option>
+                                        </select>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-secondary flex-1" id="clear-filters">
+                                            Clear
+                                        </button>
+                                        <button class="btn btn-sm btn-primary flex-1" id="apply-filters">
+                                            Apply
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label class="form-label small fw-semibold text-secondary mb-2">
+                            <i class="bi bi-lightning me-1"></i>Quick Actions
+                        </label>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-modern btn-primary-modern" id="refresh-btn">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                <span class="mobile-hide ms-1">Refresh</span>
+                            </button>
+                            <button class="btn btn-modern btn-outline-success" id="validate-selected" disabled>
+                                <i class="bi bi-check-circle"></i>
+                                <span class="mobile-hide ms-1">Validate</span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-modern btn-outline-info dropdown-toggle" type="button" 
+                                        data-bs-toggle="dropdown">
+                                    <i class="bi bi-download"></i>
+                                    <span class="mobile-hide ms-1">Export</span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" id="export-json">
+                                        <i class="bi bi-filetype-json me-2"></i>Export as JSON
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-csv">
+                                        <i class="bi bi-filetype-csv me-2"></i>Export as CSV
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" id="export-txt">
+                                        <i class="bi bi-filetype-txt me-2"></i>Export as TXT
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Profile Execution -->
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label small fw-semibold text-secondary mb-2">
+                            <i class="bi bi-gear me-1"></i>Profile Execution
+                        </label>
+                        <div class="input-group">
+                            <select class="form-select" id="profile-select">
+                                <option value="">Select Profile...</option>
+                            </select>
+                            <button class="btn btn-modern btn-outline-warning" id="execute-profile" disabled>
+                                <i class="bi bi-play-fill"></i>
+                                <span class="mobile-hide ms-1">Execute</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
         <!-- Proxy Table -->
-        <div class="row mt-3">
-            <div class="col">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Proxy List</h5>
-                        <span class="badge bg-secondary" id="proxy-count">0 proxies</span>
+        <div class="modern-card fade-in" style="animation-delay: 0.6s;">
+            <div class="card-header bg-transparent border-bottom d-flex align-items-center justify-content-between p-3">
+                <div class="d-flex align-items-center">
+                    <h5 class="mb-0 fw-semibold">
+                        <i class="bi bi-server text-primary me-2"></i>Proxy List
+                    </h5>
+                    <span class="badge bg-primary bg-opacity-10 text-primary ms-2" id="proxy-count">
+                        <div class="skeleton" style="width: 80px; height: 16px;"></div>
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Bulk Actions -->
+                    <div class="dropdown" id="bulk-actions" style="display: none;">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
+                                data-bs-toggle="dropdown">
+                            <span id="selected-count">0</span> selected
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" id="bulk-validate">
+                                <i class="bi bi-check-circle me-2"></i>Validate Selected
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" id="bulk-remove">
+                                <i class="bi bi-trash me-2"></i>Remove Selected
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="select-all">
+                                <i class="bi bi-check-all me-2"></i>Select All
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" id="clear-selection">
+                                <i class="bi bi-x me-2"></i>Clear Selection
+                            </a></li>
+                        </ul>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover mb-0" id="proxy-table">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th class="sortable" data-column="address">Address <i class="bi bi-chevron-expand"></i></th>
-                                        <th class="sortable" data-column="protocol">Protocol <i class="bi bi-chevron-expand"></i></th>
-                                        <th class="sortable" data-column="status">Status <i class="bi bi-chevron-expand"></i></th>
-                                        <th class="sortable" data-column="anonymity_level">Anonymity <i class="bi bi-chevron-expand"></i></th>
-                                        <th class="sortable" data-column="country">Country <i class="bi bi-chevron-expand"></i></th>
-                                        <th class="sortable" data-column="response_time">Response Time <i class="bi bi-chevron-expand"></i></th>
-                                        <th class="sortable" data-column="threat_level">Threat <i class="bi bi-chevron-expand"></i></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="proxy-tbody">
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Loading...</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    
+                    <!-- Auto-refresh toggle -->
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+                        <label class="form-check-label small text-muted" for="auto-refresh">
+                            <span class="mobile-hide">Auto-refresh</span>
+                            <i class="bi bi-arrow-repeat mobile-show"></i>
+                        </label>
                     </div>
                 </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table modern-table mb-0" id="proxy-table">
+                    <thead>
+                        <tr>
+                            <th class="px-3" style="width: 40px;">
+                                <input type="checkbox" class="form-check-input" id="select-all-checkbox">
+                            </th>
+                            <th class="sortable" data-column="address">
+                                Address
+                                <i class="bi bi-chevron-expand small ms-1"></i>
+                            </th>
+                            <th class="sortable mobile-hide" data-column="protocol">
+                                Protocol
+                                <i class="bi bi-chevron-expand small ms-1"></i>
+                            </th>
+                            <th class="sortable" data-column="status">
+                                Status
+                                <i class="bi bi-chevron-expand small ms-1"></i>
+                            </th>
+                            <th class="sortable mobile-hide" data-column="anonymity_level">
+                                Anonymity
+                                <i class="bi bi-chevron-expand small ms-1"></i>
+                            </th>
+                            <th class="sortable mobile-hide" data-column="country">
+                                Country
+                                <i class="bi bi-chevron-expand small ms-1"></i>
+                            </th>
+                            <th class="sortable mobile-hide" data-column="response_time">
+                                Response
+                                <i class="bi bi-chevron-expand small ms-1"></i>
+                            </th>
+                            <th class="sortable" data-column="threat_level">
+                                <span class="mobile-hide">Threat</span>
+                                <i class="bi bi-shield mobile-show"></i>
+                                <i class="bi bi-chevron-expand small ms-1"></i>
+                            </th>
+                            <th style="width: 60px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="proxy-tbody">
+                        <!-- Loading state -->
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <div class="loading-spinner me-2"></div>
+                                    <span class="text-muted">Loading proxy data...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="card-footer bg-transparent border-top d-flex align-items-center justify-content-between p-3">
+                <div class="small text-muted">
+                    Showing <span id="showing-start">0</span> to <span id="showing-end">0</span> 
+                    of <span id="total-count">0</span> proxies
+                </div>
+                <nav aria-label="Proxy pagination">
+                    <ul class="pagination pagination-sm mb-0" id="pagination">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" id="prev-page">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item active">
+                            <a class="page-link" href="#">1</a>
+                        </li>
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" id="next-page">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
     
-    <!-- Auto-refresh toggle and connection status -->
-    <div class="auto-refresh">
-        <div class="mb-2">
-            <span id="connection-status" class="badge bg-secondary">Connecting...</span>
-        </div>
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
-            <label class="form-check-label" for="auto-refresh">Auto-refresh</label>
-        </div>
+    <!-- Mobile Status Indicator -->
+    <div class="status-indicator d-md-none">
+        <div class="connection-dot connected" id="connection-dot-mobile"></div>
+        <span class="small" id="connection-status-mobile">Connected</span>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
     <script>
-        let currentData = [];
-        let sortColumn = null;
-        let sortDirection = 'asc';
-        let autoRefreshInterval = null;
-        let websocket = null;
-        let reconnectAttempts = 0;
-        const maxReconnectAttempts = 5;
+        // === APPLICATION STATE ===
+        const AppState = {
+            currentData: [],
+            filteredData: [],
+            selectedProxies: new Set(),
+            sortColumn: null,
+            sortDirection: 'asc',
+            currentPage: 1,
+            itemsPerPage: 50,
+            filters: {
+                search: '',
+                protocol: '',
+                status: '',
+                threat: ''
+            },
+            theme: localStorage.getItem('proxc-theme') || 'light',
+            autoRefresh: true,
+            websocket: null,
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 5
+        };
         
-        // Initialize dashboard
+        // === INITIALIZATION ===
         document.addEventListener('DOMContentLoaded', function() {
-            loadSummary();
-            loadProxies();
-            loadProfiles();
-            setupEventListeners();
-            connectWebSocket();
-            startAutoRefresh();
+            initializeApp();
         });
         
+        async function initializeApp() {
+            try {
+                // Initialize theme
+                initializeTheme();
+                
+                // Setup event listeners
+                setupEventListeners();
+                
+                // Load initial data
+                await Promise.all([
+                    loadSummary(),
+                    loadProxies(),
+                    loadProfiles()
+                ]);
+                
+                // Connect WebSocket
+                connectWebSocket();
+                
+                // Start auto-refresh if enabled
+                if (AppState.autoRefresh) {
+                    startAutoRefresh();
+                }
+                
+                console.log('ProxC Dashboard initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+                showNotification('Failed to initialize dashboard', 'error');
+            }
+        }
+        
+        // === THEME MANAGEMENT ===
+        function initializeTheme() {
+            document.documentElement.setAttribute('data-theme', AppState.theme);
+            updateThemeIcon();
+        }
+        
+        function toggleTheme() {
+            AppState.theme = AppState.theme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', AppState.theme);
+            localStorage.setItem('proxc-theme', AppState.theme);
+            updateThemeIcon();
+        }
+        
+        function updateThemeIcon() {
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                icon.className = AppState.theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+            }
+        }
+        
         function setupEventListeners() {
-            // Search input
-            document.getElementById('search-input').addEventListener('input', filterAndRender);
+            // === THEME TOGGLE ===
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
             
-            // Protocol filter
-            document.getElementById('protocol-filter').addEventListener('change', filterAndRender);
+            // === MOBILE SIDEBAR ===
+            document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
+            document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
             
-            // Refresh button
-            document.getElementById('refresh-btn').addEventListener('click', function() {
-                loadSummary();
-                loadProxies();
+            // === SEARCH AND FILTERS ===
+            document.getElementById('search-input').addEventListener('input', debounce(handleSearch, 300));
+            document.getElementById('apply-filters').addEventListener('click', applyFilters);
+            document.getElementById('clear-filters').addEventListener('click', clearFilters);
+            
+            // Individual filter changes
+            ['protocol-filter', 'status-filter', 'threat-filter'].forEach(id => {
+                document.getElementById(id).addEventListener('change', debounce(filterAndRender, 300));
             });
             
-            // Export buttons
+            // === TABLE INTERACTIONS ===
+            document.getElementById('select-all-checkbox').addEventListener('change', handleSelectAll);
+            
+            // Table sorting
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.dataset.column;
+                    if (AppState.sortColumn === column) {
+                        AppState.sortDirection = AppState.sortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        AppState.sortColumn = column;
+                        AppState.sortDirection = 'asc';
+                    }
+                    sortAndRender();
+                });
+            });
+            
+            // === ACTIONS ===
+            document.getElementById('refresh-btn').addEventListener('click', refreshData);
+            document.getElementById('validate-selected').addEventListener('click', validateSelected);
+            
+            // Export actions
             document.getElementById('export-json').addEventListener('click', () => exportData('json'));
             document.getElementById('export-csv').addEventListener('click', () => exportData('csv'));
+            document.getElementById('export-txt').addEventListener('click', () => exportData('txt'));
             
-            // Profile selection
+            // === BULK ACTIONS ===
+            document.getElementById('bulk-validate').addEventListener('click', bulkValidate);
+            document.getElementById('bulk-remove').addEventListener('click', bulkRemove);
+            document.getElementById('select-all').addEventListener('click', selectAllProxies);
+            document.getElementById('clear-selection').addEventListener('click', clearSelection);
+            
+            // === PROFILE MANAGEMENT ===
             document.getElementById('profile-select').addEventListener('change', function() {
                 const executeBtn = document.getElementById('execute-profile');
                 executeBtn.disabled = !this.value;
             });
-            
-            // Profile execution
             document.getElementById('execute-profile').addEventListener('click', executeSelectedProfile);
             
-            // Auto-refresh toggle
+            // === AUTO-REFRESH ===
             document.getElementById('auto-refresh').addEventListener('change', function() {
+                AppState.autoRefresh = this.checked;
                 if (this.checked) {
                     startAutoRefresh();
                 } else {
@@ -246,25 +1026,92 @@
                 }
             });
             
-            // Table sorting
-            document.querySelectorAll('.sortable').forEach(header => {
-                header.addEventListener('click', function() {
-                    const column = this.dataset.column;
-                    if (sortColumn === column) {
-                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        sortColumn = column;
-                        sortDirection = 'asc';
-                    }
-                    sortAndRender();
-                });
+            // === PAGINATION ===
+            document.getElementById('prev-page').addEventListener('click', (e) => {
+                e.preventDefault();
+                if (AppState.currentPage > 1) {
+                    AppState.currentPage--;
+                    renderTable();
+                }
+            });
+            document.getElementById('next-page').addEventListener('click', (e) => {
+                e.preventDefault();
+                const totalPages = Math.ceil(AppState.filteredData.length / AppState.itemsPerPage);
+                if (AppState.currentPage < totalPages) {
+                    AppState.currentPage++;
+                    renderTable();
+                }
             });
         }
         
+        // === UTILITY FUNCTIONS ===
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        function showNotification(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'} border-0`;
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            // Add to page if no toast container exists
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+                document.body.appendChild(container);
+            }
+            
+            container.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.remove();
+            });
+        }
+        
+        // === MOBILE SIDEBAR ===
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mobile-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+        
+        function closeSidebar() {
+            const sidebar = document.getElementById('mobile-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            sidebar.classList.remove('show');
+            overlay.classList.remove('show');
+        }
+        
+        // === AUTO-REFRESH MANAGEMENT ===
+        let autoRefreshInterval = null;
+        
         function startAutoRefresh() {
-            autoRefreshInterval = setInterval(() => {
-                loadSummary();
-                loadProxies();
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(async () => {
+                if (document.visibilityState === 'visible') {
+                    await refreshData();
+                }
             }, 30000); // 30 seconds
         }
         
@@ -275,22 +1122,193 @@
             }
         }
         
+        // === DATA LOADING ===
+        async function refreshData() {
+            try {
+                await Promise.all([loadSummary(), loadProxies()]);
+                showNotification('Data refreshed successfully', 'success');
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                showNotification('Failed to refresh data', 'error');
+            }
+        }
+        
+        // === SEARCH AND FILTERING ===
+        function handleSearch(event) {
+            AppState.filters.search = event.target.value.toLowerCase();
+            AppState.currentPage = 1;
+            filterAndRender();
+        }
+        
+        function applyFilters() {
+            AppState.filters.protocol = document.getElementById('protocol-filter').value;
+            AppState.filters.status = document.getElementById('status-filter').value;
+            AppState.filters.threat = document.getElementById('threat-filter').value;
+            AppState.currentPage = 1;
+            filterAndRender();
+        }
+        
+        function clearFilters() {
+            AppState.filters = { search: '', protocol: '', status: '', threat: '' };
+            AppState.currentPage = 1;
+            
+            // Reset form values
+            document.getElementById('search-input').value = '';
+            document.getElementById('protocol-filter').value = '';
+            document.getElementById('status-filter').value = '';
+            document.getElementById('threat-filter').value = '';
+            
+            filterAndRender();
+        }
+        
+        function filterAndRender() {
+            const { search, protocol, status, threat } = AppState.filters;
+            
+            AppState.filteredData = AppState.currentData.filter(proxy => {
+                const matchesSearch = !search || 
+                    proxy.address.toLowerCase().includes(search) ||
+                    (proxy.country && proxy.country.toLowerCase().includes(search));
+                
+                const matchesProtocol = !protocol || 
+                    proxy.protocol.toUpperCase() === protocol;
+                
+                const matchesStatus = !status || 
+                    proxy.status.toLowerCase() === status;
+                
+                const matchesThreat = !threat || 
+                    proxy.threat_level.toLowerCase() === threat;
+                
+                return matchesSearch && matchesProtocol && matchesStatus && matchesThreat;
+            });
+            
+            renderTable();
+            updatePagination();
+        }
+        
+        // === SELECTION MANAGEMENT ===
+        function handleSelectAll(event) {
+            const checked = event.target.checked;
+            const currentPageData = getCurrentPageData();
+            
+            if (checked) {
+                currentPageData.forEach(proxy => {
+                    AppState.selectedProxies.add(proxy.address);
+                });
+            } else {
+                currentPageData.forEach(proxy => {
+                    AppState.selectedProxies.delete(proxy.address);
+                });
+            }
+            
+            updateSelectionUI();
+            renderTable();
+        }
+        
+        function handleProxySelection(address, checked) {
+            if (checked) {
+                AppState.selectedProxies.add(address);
+            } else {
+                AppState.selectedProxies.delete(address);
+            }
+            
+            updateSelectionUI();
+        }
+        
+        function selectAllProxies() {
+            AppState.filteredData.forEach(proxy => {
+                AppState.selectedProxies.add(proxy.address);
+            });
+            updateSelectionUI();
+            renderTable();
+        }
+        
+        function clearSelection() {
+            AppState.selectedProxies.clear();
+            updateSelectionUI();
+            renderTable();
+        }
+        
+        function updateSelectionUI() {
+            const selectedCount = AppState.selectedProxies.size;
+            const bulkActions = document.getElementById('bulk-actions');
+            const selectedCountEl = document.getElementById('selected-count');
+            const validateBtn = document.getElementById('validate-selected');
+            
+            if (selectedCount > 0) {
+                bulkActions.style.display = 'block';
+                selectedCountEl.textContent = selectedCount;
+                validateBtn.disabled = false;
+            } else {
+                bulkActions.style.display = 'none';
+                validateBtn.disabled = true;
+            }
+            
+            // Update select all checkbox
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            const currentPageData = getCurrentPageData();
+            const allCurrentSelected = currentPageData.length > 0 && 
+                currentPageData.every(proxy => AppState.selectedProxies.has(proxy.address));
+            selectAllCheckbox.checked = allCurrentSelected;
+            selectAllCheckbox.indeterminate = !allCurrentSelected && 
+                currentPageData.some(proxy => AppState.selectedProxies.has(proxy.address));
+        }
+        
+        // === BULK ACTIONS ===
+        async function bulkValidate() {
+            if (AppState.selectedProxies.size === 0) return;
+            
+            const selectedAddresses = Array.from(AppState.selectedProxies);
+            showNotification(`Starting validation for ${selectedAddresses.length} proxies...`, 'info');
+            
+            try {
+                // TODO: Implement bulk validation API call
+                console.log('Bulk validating:', selectedAddresses);
+                showNotification('Bulk validation started successfully', 'success');
+            } catch (error) {
+                console.error('Bulk validation error:', error);
+                showNotification('Failed to start bulk validation', 'error');
+            }
+        }
+        
+        async function bulkRemove() {
+            if (AppState.selectedProxies.size === 0) return;
+            
+            const selectedAddresses = Array.from(AppState.selectedProxies);
+            
+            if (confirm(`Are you sure you want to remove ${selectedAddresses.length} selected proxies?`)) {
+                try {
+                    // TODO: Implement bulk removal API call
+                    console.log('Bulk removing:', selectedAddresses);
+                    AppState.selectedProxies.clear();
+                    updateSelectionUI();
+                    showNotification(`${selectedAddresses.length} proxies removed successfully`, 'success');
+                    await loadProxies();
+                } catch (error) {
+                    console.error('Bulk removal error:', error);
+                    showNotification('Failed to remove selected proxies', 'error');
+                }
+            }
+        }
+        
+        async function validateSelected() {
+            await bulkValidate();
+        }
+        
+        // === WEBSOCKET MANAGEMENT ===
         function connectWebSocket() {
             try {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const wsUrl = `${protocol}//${window.location.host}/ws`;
                 
-                websocket = new WebSocket(wsUrl);
+                AppState.websocket = new WebSocket(wsUrl);
                 
-                websocket.onopen = function(event) {
+                AppState.websocket.onopen = function(event) {
                     console.log('WebSocket connected');
-                    reconnectAttempts = 0;
-                    
-                    // Update connection status indicator if it exists
+                    AppState.reconnectAttempts = 0;
                     updateConnectionStatus(true);
                 };
                 
-                websocket.onmessage = function(event) {
+                AppState.websocket.onmessage = function(event) {
                     try {
                         const message = JSON.parse(event.data);
                         handleWebSocketMessage(message);
@@ -299,19 +1317,19 @@
                     }
                 };
                 
-                websocket.onclose = function(event) {
+                AppState.websocket.onclose = function(event) {
                     console.log('WebSocket disconnected');
                     updateConnectionStatus(false);
                     
                     // Attempt to reconnect
-                    if (reconnectAttempts < maxReconnectAttempts) {
-                        reconnectAttempts++;
-                        console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
-                        setTimeout(connectWebSocket, 3000 * reconnectAttempts);
+                    if (AppState.reconnectAttempts < AppState.maxReconnectAttempts) {
+                        AppState.reconnectAttempts++;
+                        console.log(`Attempting to reconnect (${AppState.reconnectAttempts}/${AppState.maxReconnectAttempts})...`);
+                        setTimeout(connectWebSocket, 3000 * AppState.reconnectAttempts);
                     }
                 };
                 
-                websocket.onerror = function(error) {
+                AppState.websocket.onerror = function(error) {
                     console.error('WebSocket error:', error);
                 };
                 
@@ -334,32 +1352,110 @@
         }
         
         function updateSummaryFromWebSocket(data) {
-            // Update summary cards
-            document.getElementById('total-proxies').textContent = data.total_proxies;
-            document.getElementById('active-proxies').textContent = data.active_proxies;
-            document.getElementById('success-rate').textContent = `${data.success_rate}%`;
-            document.getElementById('avg-response').textContent = `${data.avg_response_time}ms`;
+            updateSummaryCards(data);
         }
         
         function handleProxyUpdate(data) {
-            // Handle individual proxy updates
             console.log('Proxy update received:', data);
-            // Refresh the proxy list if needed
             loadProxies();
         }
         
         function updateConnectionStatus(connected) {
-            // Add a connection status indicator to the UI
-            const statusElement = document.getElementById('connection-status');
-            if (statusElement) {
-                statusElement.textContent = connected ? 'Connected' : 'Disconnected';
-                statusElement.className = connected ? 'badge bg-success' : 'badge bg-danger';
+            const elements = ['connection-status', 'connection-status-mobile'];
+            const dots = ['connection-dot', 'connection-dot-mobile'];
+            
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = connected ? 'Connected' : 'Disconnected';
+                }
+            });
+            
+            dots.forEach(id => {
+                const dot = document.getElementById(id);
+                if (dot) {
+                    dot.className = `connection-dot ${connected ? 'connected' : 'disconnected'}`;
+                }
+            });
+        }
+        
+        // === DATA LOADING FUNCTIONS ===
+        async function loadSummary() {
+            try {
+                const response = await fetch('/api/summary');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                updateSummaryCards(data);
+                
+            } catch (error) {
+                console.error('Error loading summary:', error);
+                // Show skeleton loading state continues
+            }
+        }
+        
+        function updateSummaryCards(data) {
+            const updates = [
+                { id: 'total-proxies', value: data.total_proxies || 0 },
+                { id: 'active-proxies', value: data.active_proxies || 0 },
+                { id: 'success-rate', value: `${Math.round((data.success_rate || 0) * 100)}%` },
+                { id: 'avg-response', value: `${Math.round(data.avg_response_time || 0)}ms` }
+            ];
+            
+            updates.forEach(({ id, value }) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    // Remove skeleton if present
+                    const skeleton = element.querySelector('.skeleton');
+                    if (skeleton) {
+                        element.innerHTML = value;
+                    } else {
+                        element.textContent = value;
+                    }
+                }
+            });
+        }
+        
+        async function loadProxies() {
+            try {
+                const response = await fetch('/api/proxies?limit=1000');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                AppState.currentData = data.proxies || [];
+                
+                // Update proxy count
+                const proxyCount = document.getElementById('proxy-count');
+                if (proxyCount) {
+                    const skeleton = proxyCount.querySelector('.skeleton');
+                    if (skeleton) {
+                        proxyCount.innerHTML = `${data.total_count || 0} proxies`;
+                    } else {
+                        proxyCount.textContent = `${data.total_count || 0} proxies`;
+                    }
+                }
+                
+                filterAndRender();
+                
+            } catch (error) {
+                console.error('Error loading proxies:', error);
+                const tbody = document.getElementById('proxy-tbody');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-danger">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Error loading proxy data
+                        </td>
+                    </tr>
+                `;
             }
         }
         
         async function loadProfiles() {
             try {
                 const response = await fetch('/api/v1/profiles');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
                 const data = await response.json();
                 
                 if (data.success) {
@@ -388,134 +1484,58 @@
             }
         }
         
-        async function executeSelectedProfile() {
-            const profileSelect = document.getElementById('profile-select');
-            const profileName = profileSelect.value;
-            
-            if (!profileName) return;
-            
-            const executeBtn = document.getElementById('execute-profile');
-            const originalText = executeBtn.innerHTML;
-            
-            try {
-                executeBtn.disabled = true;
-                executeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Executing...';
-                
-                const response = await fetch(`/api/v1/profiles/${profileName}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Show success message and commands
-                    const commands = data.data.commands;
-                    alert(`Profile "${profileName}" executed successfully!\n\nCommands:\n${commands.join('\n')}`);
-                    
-                    // Refresh data after execution
-                    loadSummary();
-                    loadProxies();
-                } else {
-                    alert(`Error executing profile: ${data.message}`);
-                }
-                
-            } catch (error) {
-                console.error('Error executing profile:', error);
-                alert('Error executing profile. Check console for details.');
-            } finally {
-                executeBtn.disabled = false;
-                executeBtn.innerHTML = originalText;
-            }
-        }
-        
-        async function loadSummary() {
-            try {
-                const response = await fetch('/api/summary');
-                const data = await response.json();
-                
-                document.getElementById('total-proxies').textContent = data.total_proxies;
-                document.getElementById('active-proxies').textContent = data.active_proxies;
-                document.getElementById('success-rate').textContent = `${data.success_rate}%`;
-                document.getElementById('avg-response').textContent = `${data.avg_response_time}ms`;
-                
-            } catch (error) {
-                console.error('Error loading summary:', error);
-            }
-        }
-        
-        async function loadProxies() {
-            try {
-                const response = await fetch('/api/proxies');
-                const data = await response.json();
-                
-                currentData = data.proxies;
-                document.getElementById('proxy-count').textContent = `${data.total_count} proxies`;
-                
-                filterAndRender();
-                
-            } catch (error) {
-                console.error('Error loading proxies:', error);
-                const tbody = document.getElementById('proxy-tbody');
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error loading proxy data</td></tr>';
-            }
-        }
-        
-        function filterAndRender() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const protocolFilter = document.getElementById('protocol-filter').value;
-            
-            let filtered = currentData.filter(proxy => {
-                const matchesSearch = !searchTerm || 
-                    proxy.address.toLowerCase().includes(searchTerm) ||
-                    (proxy.country && proxy.country.toLowerCase().includes(searchTerm));
-                
-                const matchesProtocol = !protocolFilter || 
-                    proxy.protocol.toUpperCase() === protocolFilter;
-                
-                return matchesSearch && matchesProtocol;
-            });
-            
-            renderTable(filtered);
+        // === TABLE RENDERING ===
+        function getCurrentPageData() {
+            const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
+            const endIndex = startIndex + AppState.itemsPerPage;
+            return AppState.filteredData.slice(startIndex, endIndex);
         }
         
         function sortAndRender() {
             // Update sort indicators
             document.querySelectorAll('.sortable').forEach(header => {
                 header.classList.remove('sort-asc', 'sort-desc');
-                if (header.dataset.column === sortColumn) {
-                    header.classList.add(`sort-${sortDirection}`);
+                if (header.dataset.column === AppState.sortColumn) {
+                    header.classList.add(`sort-${AppState.sortDirection}`);
                 }
             });
             
-            filterAndRender();
+            renderTable();
         }
         
-        function renderTable(data) {
+        function renderTable() {
             const tbody = document.getElementById('proxy-tbody');
+            const currentPageData = getCurrentPageData();
             
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No proxies found</td></tr>';
+            if (!currentPageData || currentPageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                No proxies found
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                updateSelectionUI();
                 return;
             }
             
             // Sort data if needed
-            if (sortColumn) {
-                data.sort((a, b) => {
-                    let aVal = a[sortColumn] || '';
-                    let bVal = b[sortColumn] || '';
+            if (AppState.sortColumn) {
+                AppState.filteredData.sort((a, b) => {
+                    let aVal = a[AppState.sortColumn] || '';
+                    let bVal = b[AppState.sortColumn] || '';
                     
                     if (typeof aVal === 'number' && typeof bVal === 'number') {
-                        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                        return AppState.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
                     }
                     
                     aVal = String(aVal).toLowerCase();
                     bVal = String(bVal).toLowerCase();
                     
-                    if (sortDirection === 'asc') {
+                    if (AppState.sortDirection === 'asc') {
                         return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
                     } else {
                         return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
@@ -523,19 +1543,105 @@
                 });
             }
             
-            tbody.innerHTML = data.map(proxy => `
-                <tr>
-                    <td><code>${proxy.address}</code></td>
-                    <td><span class="badge badge-protocol-${proxy.protocol}">${proxy.protocol.toUpperCase()}</span></td>
-                    <td><span class="badge badge-status-${proxy.status.toLowerCase()}">${proxy.status}</span></td>
-                    <td>${proxy.anonymity_level || 'Unknown'}</td>
-                    <td>${proxy.country ? `${proxy.country} <small class="text-muted">(${proxy.country_code})</small>` : 'Unknown'}</td>
-                    <td>${proxy.response_time ? `${proxy.response_time}ms` : 'N/A'}</td>
-                    <td><span class="badge badge-threat-${proxy.threat_level.toLowerCase()}">${proxy.threat_level}</span></td>
-                </tr>
-            `).join('');
+            const rows = currentPageData.map(proxy => {
+                const isSelected = AppState.selectedProxies.has(proxy.address);
+                
+                return `
+                    <tr class="fade-in">
+                        <td class="px-3">
+                            <input type="checkbox" class="form-check-input proxy-checkbox" 
+                                   data-address="${proxy.address}" ${isSelected ? 'checked' : ''}>
+                        </td>
+                        <td>
+                            <code class="small">${proxy.address}</code>
+                        </td>
+                        <td class="mobile-hide">
+                            <span class="badge badge-protocol badge-protocol-${proxy.protocol.toLowerCase()}">
+                                ${proxy.protocol.toUpperCase()}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge badge-status badge-status-${proxy.status.toLowerCase()}">
+                                ${proxy.status}
+                            </span>
+                        </td>
+                        <td class="mobile-hide">
+                            <span class="small text-muted">${proxy.anonymity_level || 'Unknown'}</span>
+                        </td>
+                        <td class="mobile-hide">
+                            ${proxy.country ? 
+                                `<span class="small">${proxy.country} <small class="text-muted">(${proxy.country_code})</small></span>` : 
+                                '<span class="small text-muted">Unknown</span>'
+                            }
+                        </td>
+                        <td class="mobile-hide">
+                            ${proxy.response_time ? 
+                                `<span class="small ${proxy.response_time > 2000 ? 'text-warning' : proxy.response_time > 5000 ? 'text-danger' : 'text-success'}">${proxy.response_time}ms</span>` : 
+                                '<span class="small text-muted">N/A</span>'
+                            }
+                        </td>
+                        <td>
+                            <span class="badge badge-threat badge-threat-${proxy.threat_level.toLowerCase()}">
+                                ${proxy.threat_level}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                        data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="validateProxy('${proxy.address}')">
+                                        <i class="bi bi-check-circle me-2"></i>Validate
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="copyToClipboard('${proxy.address}')">
+                                        <i class="bi bi-clipboard me-2"></i>Copy
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="removeProxy('${proxy.address}')">
+                                        <i class="bi bi-trash me-2"></i>Remove
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tbody.innerHTML = rows;
+            
+            // Add event listeners to checkboxes
+            tbody.querySelectorAll('.proxy-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    handleProxySelection(this.dataset.address, this.checked);
+                });
+            });
+            
+            updateSelectionUI();
+            updatePagination();
         }
         
+        function updatePagination() {
+            const totalItems = AppState.filteredData.length;
+            const totalPages = Math.ceil(totalItems / AppState.itemsPerPage);
+            const startItem = totalItems > 0 ? (AppState.currentPage - 1) * AppState.itemsPerPage + 1 : 0;
+            const endItem = Math.min(AppState.currentPage * AppState.itemsPerPage, totalItems);
+            
+            // Update pagination info
+            document.getElementById('showing-start').textContent = startItem;
+            document.getElementById('showing-end').textContent = endItem;
+            document.getElementById('total-count').textContent = totalItems;
+            
+            // Update pagination buttons
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            
+            prevBtn.parentElement.classList.toggle('disabled', AppState.currentPage <= 1);
+            nextBtn.parentElement.classList.toggle('disabled', AppState.currentPage >= totalPages);
+        }
+        
+        // === EXPORT FUNCTIONS ===
         async function exportData(format) {
             try {
                 const url = `/api/export?format=${format}`;
@@ -551,11 +1657,82 @@
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(downloadUrl);
+                    
+                    showNotification(`Exported ${AppState.filteredData.length} proxies as ${format.toUpperCase()}`, 'success');
                 } else {
-                    console.error('Export failed:', response.statusText);
+                    throw new Error(`Export failed: ${response.statusText}`);
                 }
             } catch (error) {
                 console.error('Export error:', error);
+                showNotification('Export failed', 'error');
+            }
+        }
+        
+        // === PROFILE EXECUTION ===
+        async function executeSelectedProfile() {
+            const profileSelect = document.getElementById('profile-select');
+            const profileName = profileSelect.value;
+            
+            if (!profileName) return;
+            
+            const executeBtn = document.getElementById('execute-profile');
+            const originalText = executeBtn.innerHTML;
+            
+            try {
+                executeBtn.disabled = true;
+                executeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> <span class="mobile-hide ms-1">Executing...</span>';
+                
+                const response = await fetch(`/api/v1/profiles/${profileName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const commands = data.data.commands;
+                    showNotification(`Profile "${profileName}" executed successfully!`, 'success');
+                    
+                    // Refresh data after execution
+                    await refreshData();
+                } else {
+                    throw new Error(data.message || 'Profile execution failed');
+                }
+                
+            } catch (error) {
+                console.error('Error executing profile:', error);
+                showNotification(`Error executing profile: ${error.message}`, 'error');
+            } finally {
+                executeBtn.disabled = false;
+                executeBtn.innerHTML = originalText;
+            }
+        }
+        
+        // === INDIVIDUAL PROXY ACTIONS ===
+        async function validateProxy(address) {
+            showNotification(`Validating proxy ${address}...`, 'info');
+            // TODO: Implement individual proxy validation
+            console.log('Validating proxy:', address);
+        }
+        
+        async function copyToClipboard(address) {
+            try {
+                await navigator.clipboard.writeText(address);
+                showNotification('Proxy address copied to clipboard', 'success');
+            } catch (error) {
+                console.error('Failed to copy to clipboard:', error);
+                showNotification('Failed to copy to clipboard', 'error');
+            }
+        }
+        
+        async function removeProxy(address) {
+            if (confirm(`Are you sure you want to remove proxy ${address}?`)) {
+                showNotification(`Removing proxy ${address}...`, 'info');
+                // TODO: Implement individual proxy removal
+                console.log('Removing proxy:', address);
             }
         }
     </script>

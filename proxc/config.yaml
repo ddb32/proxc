@@ -1,0 +1,54 @@
+# ProxC Configuration File
+# Generated automatically with default values
+
+# Database Configuration
+database_url: "sqlite:///proxies.db"          # SQLite database path
+database_pool_size: 5                    # Connection pool size
+database_timeout: 30                      # Query timeout (seconds)
+
+# Proxy Validation Settings
+validation_timeout: 10                   # Timeout per proxy (seconds)
+validation_retries: 3                    # Retry attempts
+max_concurrent_validations: 50          # Parallel validations
+
+# Proxy Fetching Settings
+fetch_timeout: 30                      # Fetch timeout (seconds)
+fetch_retries: 2                       # Retry attempts
+max_proxies_per_source: 1000             # Max proxies per source
+rate_limit_delay: 1.0                    # Delay between requests
+
+# Security Settings
+enable_ssl_verification: true         # SSL certificate verification
+security_level: "medium"               # low, medium, high
+anonymity_required: "anonymous"         # transparent, anonymous, elite
+
+# Cache Settings
+cache_enabled: true                   # Enable caching
+cache_ttl_hours: 24                    # Cache TTL in hours
+cache_max_size: 10000                   # Max cached items
+
+# Export Settings
+default_export_format: "json"       # json, csv, txt, xlsx
+export_include_metrics: true         # Include performance metrics
+export_include_geo: true             # Include geo information
+
+# Logging Settings
+log_level: "INFO"                    # DEBUG, INFO, WARNING, ERROR
+log_file: "proxc.log"          # Log file path
+enable_file_logging: true            # Enable file logging
+
+# CLI Behavior Settings
+verbose: false                        # Verbose output by default
+quiet: false                          # Quiet mode by default
+silent: false                        # Silent mode by default
+
+# Default CLI Parameters
+default_threads: 20                     # Default number of threads
+default_timeout: 10000                    # Default timeout in milliseconds  
+default_count: 100                       # Default batch size
+default_rate_limit: 1.0                  # Default rate limit (requests/sec)
+
+# Advanced Settings
+user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+enable_geolocation: true              # Enable GeoIP lookup
+enable_threat_check: true            # Enable threat intelligence

@@ -241,11 +241,28 @@ class WebSocketManager:
         dead_connections = []
         with self._lock:
             for connection in self.connections:
+                # Skip if connection is already marked as disconnected
+                if not connection.get('connected', True):
+                    dead_connections.append(connection)
+                    continue
+                    
                 try:
+                    # Check if file descriptor is still valid
+                    if hasattr(connection['wfile'], 'closed') and connection['wfile'].closed:
+                        dead_connections.append(connection)
+                        continue
+                        
                     connection['wfile'].write(message_bytes)
                     connection['wfile'].flush()
+                except (OSError, BrokenPipeError) as e:
+                    # Suppress common connection errors to reduce log noise
+                    if e.errno not in [9, 32]:  # Bad file descriptor, Broken pipe
+                        self.logger.debug(f"WebSocket client disconnected: {e}")
+                    connection['connected'] = False
+                    dead_connections.append(connection)
                 except Exception as e:
-                    self.logger.warning(f"Failed to send message to WebSocket client: {e}")
+                    self.logger.debug(f"WebSocket error (client likely disconnected): {e}")
+                    connection['connected'] = False
                     dead_connections.append(connection)
         
         # Remove dead connections
@@ -275,6 +292,19 @@ class WebSocketManager:
     def get_connection_count(self) -> int:
         """Get number of active connections"""
         return len(self.connections)
+    
+    def close_all_connections(self):
+        """Close all WebSocket connections cleanly"""
+        with self._lock:
+            for connection in self.connections:
+                try:
+                    connection['connected'] = False
+                    if hasattr(connection['wfile'], 'close'):
+                        connection['wfile'].close()
+                except Exception:
+                    pass  # Ignore errors during cleanup
+            self.connections.clear()
+            self.logger.info("All WebSocket connections closed")
 
 
 class ProxyWebServer:
@@ -363,6 +393,10 @@ class ProxyWebServer:
     def stop(self):
         """Stop the web server"""
         try:
+            # Close WebSocket connections first
+            if self.websocket_manager:
+                self.websocket_manager.close_all_connections()
+            
             if self.server:
                 self.logger.info("Stopping web server...")
                 self.server.shutdown()
@@ -480,11 +514,169 @@ class ProxyWebServer:
             'data': proxy_data
         }
         self.websocket_manager.broadcast_message(update_message)
+    
+    def wait_for_shutdown(self):
+        """Wait for server shutdown, typically called to keep main thread alive"""
+        try:
+            if self.server_thread and self.server_thread.is_alive():
+                # Keep the main thread alive while server is running
+                while self.is_running and self.server_thread.is_alive():
+                    time.sleep(0.1)  # Small sleep to prevent busy waiting
+        except KeyboardInterrupt:
+            # KeyboardInterrupt will be re-raised to be caught by caller
+            raise
+        except Exception as e:
+            self.logger.error(f"Error in wait_for_shutdown: {e}")
+            raise
 
 
-# Convenience function for backward compatibility
+# Convenience functions for backward compatibility
 def start_web_server(data_handler, port: Optional[int] = None, open_browser: bool = True) -> ProxyWebServer:
     """Start web server with given data handler"""
     server = ProxyWebServer(data_handler, port)
     server.start(open_browser)
     return server
+
+def create_web_server(proxies, config=None, port: Optional[int] = None) -> ProxyWebServer:
+    """Create web server instance with proxy data (used by CLI)"""
+    # Create a simple data handler from the proxies list
+    class ProxyDataHandler:
+        def __init__(self, proxy_list):
+            self.proxies = proxy_list or []
+        
+        def get_summary_json(self):
+            """Return summary data for the web interface"""
+            total = len(self.proxies)
+            active = sum(1 for p in self.proxies if getattr(p, 'is_working', False))
+            return {
+                'total_proxies': total,
+                'active_proxies': active,
+                'success_rate': (active / total) if total > 0 else 0.0,
+                'avg_response_time': 0.0,  # TODO: Calculate if response times available
+                'timestamp': time.time()
+            }
+        
+        def get_proxies_json(self, filters=None, limit=100, offset=0):
+            """Return filtered proxy data for the web interface"""
+            try:
+                # Apply basic filtering
+                filtered_proxies = self.proxies[:]
+                
+                if filters:
+                    # Apply status filter
+                    if filters.get('status'):
+                        status_filter = filters['status'].lower()
+                        if status_filter == 'active':
+                            filtered_proxies = [p for p in filtered_proxies if getattr(p, 'is_working', False)]
+                        elif status_filter == 'inactive':
+                            filtered_proxies = [p for p in filtered_proxies if not getattr(p, 'is_working', False)]
+                    
+                    # Apply protocol filter  
+                    if filters.get('protocol'):
+                        protocol_filter = filters['protocol'].lower()
+                        filtered_proxies = [p for p in filtered_proxies if getattr(p, 'protocol', '').lower() == protocol_filter]
+                    
+                    # Apply country filter
+                    if filters.get('country'):
+                        country_filter = filters['country'].upper()
+                        filtered_proxies = [p for p in filtered_proxies if getattr(p, 'country', '') == country_filter]
+                
+                total_count = len(filtered_proxies)
+                
+                # Apply pagination
+                start_idx = offset
+                end_idx = offset + limit
+                paginated_proxies = filtered_proxies[start_idx:end_idx]
+                
+                # Convert to JSON-serializable format
+                proxy_list = []
+                for proxy in paginated_proxies:
+                    # Extract protocol value safely
+                    protocol = getattr(proxy, 'protocol', 'http')
+                    if hasattr(protocol, 'value'):
+                        protocol = protocol.value
+                    elif not isinstance(protocol, str):
+                        protocol = str(protocol)
+                    
+                    # Extract anonymity level value safely
+                    anonymity_level = getattr(proxy, 'anonymity_level', 'unknown')
+                    if hasattr(anonymity_level, 'value'):
+                        anonymity_level = anonymity_level.value
+                    elif not isinstance(anonymity_level, str):
+                        anonymity_level = str(anonymity_level)
+                    
+                    # Handle datetime serialization for last_tested
+                    last_tested = getattr(proxy, 'last_tested', None)
+                    if last_tested and hasattr(last_tested, 'isoformat'):
+                        last_tested = last_tested.isoformat()
+                    elif last_tested and not isinstance(last_tested, str):
+                        last_tested = str(last_tested)
+                    
+                    # Extract status value safely
+                    status = getattr(proxy, 'status', None)
+                    if hasattr(status, 'value'):
+                        status = status.value
+                    elif status is None:
+                        # Derive status from is_working field
+                        status = 'active' if getattr(proxy, 'is_working', False) else 'inactive'
+                    elif not isinstance(status, str):
+                        status = str(status)
+                    
+                    # Extract threat_level value safely
+                    threat_level = getattr(proxy, 'threat_level', None)
+                    if hasattr(threat_level, 'value'):
+                        threat_level = threat_level.value
+                    elif threat_level is None:
+                        threat_level = 'low'  # Default threat level
+                    elif not isinstance(threat_level, str):
+                        threat_level = str(threat_level)
+                    
+                    # Get address (use property if available, otherwise construct)
+                    address = getattr(proxy, 'address', None)
+                    if address is None:
+                        host = getattr(proxy, 'host', 'unknown')
+                        port = getattr(proxy, 'port', 0)
+                        address = f"{host}:{port}"
+                    
+                    # Extract country and derive country_code
+                    country = getattr(proxy, 'country', '')
+                    country_code = country.upper()[:2] if country else ''  # Use first 2 chars as code
+                    
+                    proxy_dict = {
+                        'host': getattr(proxy, 'host', 'unknown'),
+                        'port': getattr(proxy, 'port', 0),
+                        'address': address,
+                        'protocol': protocol,
+                        'status': status,
+                        'anonymity_level': anonymity_level,
+                        'country': country,
+                        'country_code': country_code,
+                        'response_time': getattr(proxy, 'response_time', 0.0),
+                        'threat_level': threat_level,
+                        'is_working': getattr(proxy, 'is_working', False),
+                        'last_tested': last_tested,
+                        'success_rate': getattr(proxy, 'success_rate', 0.0)
+                    }
+                    proxy_list.append(proxy_dict)
+                
+                return {
+                    'proxies': proxy_list,
+                    'total_count': total_count,
+                    'limit': limit,
+                    'offset': offset,
+                    'has_more': (offset + limit) < total_count
+                }
+                
+            except Exception as e:
+                # Return empty result on error
+                return {
+                    'proxies': [],
+                    'total_count': 0,
+                    'limit': limit,
+                    'offset': offset,
+                    'has_more': False,
+                    'error': str(e)
+                }
+    
+    data_handler = ProxyDataHandler(proxies)
+    return ProxyWebServer(data_handler, port)

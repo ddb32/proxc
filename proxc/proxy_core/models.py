@@ -67,6 +67,22 @@ class OperationalGrade(Enum):
     ELITE = "elite"
 
 
+class RiskCategory(Enum):
+    """Risk category for intelligent proxy management"""
+    ACTIVE = "active"        # Recently validated, good performance
+    AT_RISK = "at_risk"      # Declining performance, needs monitoring
+    INACTIVE = "inactive"    # Poor performance, low priority
+    UNKNOWN = "unknown"      # New proxy, not yet categorized
+
+
+class TierLevel(Enum):
+    """Scanning tier levels for differential validation"""
+    TIER_1 = 1  # High priority: 24-hour intervals, lightweight validation
+    TIER_2 = 2  # Medium priority: 6-12 hour intervals, comprehensive validation  
+    TIER_3 = 3  # Low priority: Weekly intervals, basic connectivity checks
+    TIER_4 = 4  # Unknown/New: On-demand validation with priority-guided scheduling
+
+
 # ===============================================================================
 # EXCEPTION CLASSES
 # ===============================================================================
@@ -394,6 +410,21 @@ class ProxyInfo:
     protocol_detection_time: Optional[datetime] = None
     protocol_fallback_attempted: bool = False
     
+    # Enhancement Phase 1: Intelligent Proxy Management Fields
+    # Geographical information
+    region: Optional[str] = None           # Geographical region (continent level)
+    country: Optional[str] = None          # Country code (ISO 3166-1 alpha-2)
+    city: Optional[str] = None             # City name for granular filtering
+    
+    # Risk categorization and tier management
+    risk_category: RiskCategory = RiskCategory.UNKNOWN       # Risk assessment category
+    scan_priority: int = 5                                   # Priority level (1-10, 1=highest)
+    tier_level: TierLevel = TierLevel.TIER_4                # Scanning tier (1-4)
+    
+    # Intelligent scheduling
+    next_scheduled_check: Optional[datetime] = None          # Next scheduled validation
+    check_frequency: int = 24                               # Check frequency in hours
+    
     # Related data objects
     geo_location: Optional[GeoLocation] = None
     metrics: ProxyMetrics = field(default_factory=ProxyMetrics)
@@ -506,6 +537,135 @@ class ProxyInfo:
         
         return max(0.0, min(100.0, score))
     
+    # Enhancement Phase 1: New methods for intelligent proxy management
+    
+    @property
+    def is_high_priority(self) -> bool:
+        """Check if proxy is high priority (tier 1-2 or priority 1-3)"""
+        return self.tier_level.value <= 2 or self.scan_priority <= 3
+    
+    @property
+    def is_due_for_check(self) -> bool:
+        """Check if proxy is due for validation check"""
+        if not self.next_scheduled_check:
+            return True
+        return datetime.utcnow() >= self.next_scheduled_check
+    
+    @property
+    def geographical_identifier(self) -> str:
+        """Get geographical identifier string"""
+        parts = []
+        if self.city:
+            parts.append(self.city)
+        if self.country:
+            parts.append(self.country)
+        if self.region:
+            parts.append(self.region)
+        return ", ".join(parts) if parts else "Unknown"
+    
+    def update_risk_category(self, new_category: RiskCategory, reason: str = ""):
+        """Update risk category with tracking"""
+        old_category = self.risk_category
+        self.risk_category = new_category
+        self.last_updated = datetime.utcnow()
+        
+        # Adjust tier level based on risk category
+        if new_category == RiskCategory.ACTIVE:
+            self.tier_level = TierLevel.TIER_1
+            self.check_frequency = 24
+        elif new_category == RiskCategory.AT_RISK:
+            self.tier_level = TierLevel.TIER_2
+            self.check_frequency = 12
+        elif new_category == RiskCategory.INACTIVE:
+            self.tier_level = TierLevel.TIER_3
+            self.check_frequency = 168  # Weekly
+        else:  # UNKNOWN
+            self.tier_level = TierLevel.TIER_4
+            self.check_frequency = 24
+        
+        # Add note about category change
+        if reason:
+            note = f"Risk category changed from {old_category.value} to {new_category.value}: {reason}"
+            self.notes = f"{self.notes}\n{datetime.utcnow().isoformat()}: {note}".strip()
+    
+    def update_geographical_info(self, region: Optional[str] = None, 
+                                country: Optional[str] = None, 
+                                city: Optional[str] = None):
+        """Update geographical information"""
+        if region is not None:
+            self.region = region
+        if country is not None:
+            self.country = country
+        if city is not None:
+            self.city = city
+        self.last_updated = datetime.utcnow()
+    
+    def schedule_next_check(self, hours_from_now: Optional[int] = None):
+        """Schedule next validation check"""
+        if hours_from_now is None:
+            hours_from_now = self.check_frequency
+        
+        from datetime import timedelta
+        self.next_scheduled_check = datetime.utcnow() + timedelta(hours=hours_from_now)
+        self.last_updated = datetime.utcnow()
+    
+    def calculate_tier_score(self) -> float:
+        """Calculate score for tier assignment (0-100)"""
+        score = 50.0  # Base score
+        
+        # Recent performance weight
+        if self.metrics.success_rate:
+            score += (self.metrics.success_rate - 50) * 0.5
+        
+        # Response time weight
+        if self.metrics.response_time:
+            if self.metrics.response_time < 5000:  # < 5 seconds
+                score += 15
+            elif self.metrics.response_time < 10000:  # < 10 seconds
+                score += 10
+            elif self.metrics.response_time > 30000:  # > 30 seconds
+                score -= 15
+        
+        # Status weight
+        if self.status == ProxyStatus.ACTIVE:
+            score += 20
+        elif self.status == ProxyStatus.FAILED:
+            score -= 30
+        
+        # Security assessment weight
+        if self.security_assessment:
+            security_score = self.security_assessment.calculate_overall_score()
+            score = (score * 0.7) + (security_score * 0.3)
+        
+        return max(0.0, min(100.0, score))
+    
+    def update_tier_based_on_performance(self):
+        """Automatically update tier based on current performance"""
+        tier_score = self.calculate_tier_score()
+        
+        if tier_score >= 80:
+            new_tier = TierLevel.TIER_1
+            new_category = RiskCategory.ACTIVE
+        elif tier_score >= 60:
+            new_tier = TierLevel.TIER_2
+            new_category = RiskCategory.AT_RISK if self.risk_category == RiskCategory.INACTIVE else self.risk_category
+        elif tier_score >= 30:
+            new_tier = TierLevel.TIER_3
+            new_category = RiskCategory.AT_RISK
+        else:
+            new_tier = TierLevel.TIER_4
+            new_category = RiskCategory.INACTIVE
+        
+        # Update if changed
+        if new_tier != self.tier_level:
+            old_tier = self.tier_level
+            self.tier_level = new_tier
+            note = f"Tier updated from {old_tier.value} to {new_tier.value} (score: {tier_score:.1f})"
+            self.notes = f"{self.notes}\n{datetime.utcnow().isoformat()}: {note}".strip()
+        
+        if new_category != self.risk_category:
+            self.update_risk_category(new_category, f"Performance-based update (score: {tier_score:.1f})")
+    
     def add_tag(self, tag: str):
         """Add a tag if not already present"""
         if tag not in self.tags:
@@ -551,7 +711,20 @@ class ProxyInfo:
             "security_assessment": self.security_assessment.to_dict() if self.security_assessment else None,
             "tags": self.tags,
             "notes": self.notes,
-            "metadata": self.metadata
+            "metadata": self.metadata,
+            # Enhancement Phase 1 fields
+            "region": self.region,
+            "country": self.country,
+            "city": self.city,
+            "risk_category": self.risk_category.value,
+            "scan_priority": self.scan_priority,
+            "tier_level": self.tier_level.value,
+            "next_scheduled_check": self.next_scheduled_check.isoformat() if self.next_scheduled_check else None,
+            "check_frequency": self.check_frequency,
+            "geographical_identifier": self.geographical_identifier,
+            "is_high_priority": self.is_high_priority,
+            "is_due_for_check": self.is_due_for_check,
+            "tier_score": self.calculate_tier_score()
         }
     
     @classmethod
@@ -650,8 +823,22 @@ def create_proxy_from_dict(data: Dict[str, Any]) -> ProxyInfo:
     if 'operational_grade' in data and isinstance(data['operational_grade'], str):
         data['operational_grade'] = OperationalGrade(data['operational_grade'])
     
+    # Handle Enhancement Phase 1 enums
+    if 'risk_category' in data and isinstance(data['risk_category'], str):
+        data['risk_category'] = RiskCategory(data['risk_category'])
+    if 'tier_level' in data and isinstance(data['tier_level'], (str, int)):
+        if isinstance(data['tier_level'], str):
+            # Handle string values like "TIER_1" or "1"
+            if data['tier_level'].startswith('TIER_'):
+                tier_num = int(data['tier_level'].split('_')[1])
+            else:
+                tier_num = int(data['tier_level'])
+        else:
+            tier_num = data['tier_level']
+        data['tier_level'] = TierLevel(tier_num)
+    
     # Handle datetime fields
-    for date_field in ['discovered_at', 'last_updated']:
+    for date_field in ['discovered_at', 'last_updated', 'next_scheduled_check']:
         if date_field in data and isinstance(data[date_field], str):
             data[date_field] = datetime.fromisoformat(data[date_field])
     
@@ -676,6 +863,250 @@ def create_proxy_from_dict(data: Dict[str, Any]) -> ProxyInfo:
         data['security_assessment'] = SecurityAssessment(**security_data)
     
     return ProxyInfo(**{k: v for k, v in data.items() if k in ProxyInfo.__dataclass_fields__})
+
+
+@dataclass
+class ProxyHealthMetrics:
+    """Comprehensive health metrics for proxy monitoring"""
+    # Response time metrics
+    avg_response_time: float = 0.0
+    min_response_time: float = 0.0
+    max_response_time: float = 0.0
+    response_time_std: float = 0.0
+    
+    # Availability metrics
+    uptime_hours: float = 0.0
+    downtime_hours: float = 0.0
+    availability_percentage: float = 0.0
+    
+    # Performance metrics
+    success_count: int = 0
+    failure_count: int = 0
+    timeout_count: int = 0
+    connection_error_count: int = 0
+    
+    # Quality metrics
+    data_integrity_score: float = 100.0
+    consistency_score: float = 100.0
+    reliability_score: float = 100.0
+    
+    # Trend analysis
+    performance_trend: str = "stable"  # improving, degrading, stable
+    risk_trend: str = "stable"
+    quality_trend: str = "stable"
+    
+    # Historical data
+    last_health_check: Optional[datetime] = None
+    health_check_interval: int = 3600  # seconds
+    metrics_retention_days: int = 30
+    
+    def calculate_overall_health_score(self) -> float:
+        """Calculate overall health score (0-100)"""
+        if self.success_count + self.failure_count == 0:
+            return 50.0  # Neutral score for new proxies
+        
+        # Base success rate score
+        success_rate = self.success_count / (self.success_count + self.failure_count)
+        base_score = success_rate * 100
+        
+        # Adjust for response time (penalize slow proxies)
+        if self.avg_response_time > 5000:  # > 5 seconds
+            base_score *= 0.7
+        elif self.avg_response_time > 2000:  # > 2 seconds
+            base_score *= 0.85
+        
+        # Adjust for availability
+        base_score *= (self.availability_percentage / 100)
+        
+        # Quality adjustments
+        quality_multiplier = (
+            self.data_integrity_score +
+            self.consistency_score +
+            self.reliability_score
+        ) / 300
+        
+        return min(100.0, max(0.0, base_score * quality_multiplier))
+    
+    def update_metrics(self, success: bool, response_time: Optional[float] = None):
+        """Update metrics with new validation result"""
+        if success:
+            self.success_count += 1
+        else:
+            self.failure_count += 1
+        
+        if response_time is not None and response_time > 0:
+            # Update response time statistics
+            total_checks = self.success_count + self.failure_count
+            if total_checks == 1:
+                self.avg_response_time = response_time
+                self.min_response_time = response_time
+                self.max_response_time = response_time
+            else:
+                self.avg_response_time = (
+                    (self.avg_response_time * (total_checks - 1) + response_time) / total_checks
+                )
+                self.min_response_time = min(self.min_response_time, response_time)
+                self.max_response_time = max(self.max_response_time, response_time)
+        
+        # Update availability
+        total_checks = self.success_count + self.failure_count
+        if total_checks > 0:
+            self.availability_percentage = (self.success_count / total_checks) * 100
+        
+        self.last_health_check = datetime.utcnow()
+
+
+@dataclass
+class ProxyRiskProfile:
+    """Risk assessment profile for intelligent proxy management"""
+    # Risk scoring
+    overall_risk_score: float = 50.0  # 0-100 scale (0=lowest risk, 100=highest risk)
+    geographical_risk: float = 50.0
+    performance_risk: float = 50.0
+    security_risk: float = 50.0
+    reliability_risk: float = 50.0
+    
+    # Risk factors
+    high_risk_country: bool = False
+    known_bad_asn: bool = False
+    suspicious_behavior: bool = False
+    frequent_failures: bool = False
+    inconsistent_responses: bool = False
+    
+    # Trust metrics
+    trust_score: float = 50.0
+    reputation_history: List[str] = field(default_factory=list)
+    confidence_level: float = 50.0
+    
+    # Categorization
+    risk_category: RiskCategory = RiskCategory.UNKNOWN
+    recommended_tier: TierLevel = TierLevel.TIER_4
+    scan_frequency_hours: int = 24
+    
+    # Temporal data
+    risk_assessment_date: Optional[datetime] = None
+    next_risk_review: Optional[datetime] = None
+    risk_trend: str = "stable"  # increasing, decreasing, stable
+    
+    def update_geographical_risk(self, country_code: Optional[str], asn: Optional[int] = None):
+        """Update geographical risk based on location"""
+        if country_code:
+            if country_code in HIGH_RISK_COUNTRIES:
+                self.geographical_risk = 85.0
+                self.high_risk_country = True
+            elif country_code in LOW_RISK_COUNTRIES:
+                self.geographical_risk = 15.0
+                self.high_risk_country = False
+            else:
+                self.geographical_risk = 50.0  # Neutral for unknown countries
+        
+        # ASN-based risk (placeholder logic)
+        if asn and asn in []:  # Add known bad ASNs here
+            self.known_bad_asn = True
+            self.geographical_risk = min(100.0, self.geographical_risk + 20.0)
+    
+    def update_performance_risk(self, health_metrics: ProxyHealthMetrics):
+        """Update performance risk based on health metrics"""
+        health_score = health_metrics.calculate_overall_health_score()
+        
+        # Inverse relationship: high health = low risk
+        self.performance_risk = 100.0 - health_score
+        
+        # Check for frequent failures
+        total_checks = health_metrics.success_count + health_metrics.failure_count
+        if total_checks > 10:
+            failure_rate = health_metrics.failure_count / total_checks
+            if failure_rate > 0.3:  # More than 30% failure rate
+                self.frequent_failures = True
+                self.performance_risk = min(100.0, self.performance_risk + 15.0)
+    
+    def update_security_risk(self, security_assessment: SecurityAssessment):
+        """Update security risk based on security assessment"""
+        base_security_risk = 100.0 - security_assessment.calculate_overall_score()
+        
+        # Adjust based on specific security factors
+        if security_assessment.is_honeypot:
+            base_security_risk = 100.0
+        elif security_assessment.is_blacklisted:
+            base_security_risk = min(100.0, base_security_risk + 30.0)
+        
+        # Threat level adjustments
+        threat_multipliers = {
+            ThreatLevel.LOW: 0.8,
+            ThreatLevel.MEDIUM: 1.0,
+            ThreatLevel.HIGH: 1.5,
+            ThreatLevel.CRITICAL: 2.0
+        }
+        multiplier = threat_multipliers.get(security_assessment.threat_level, 1.0)
+        
+        self.security_risk = min(100.0, base_security_risk * multiplier)
+    
+    def calculate_overall_risk(self) -> float:
+        """Calculate overall risk score from component risks"""
+        # Weighted average of risk components
+        weights = {
+            'geographical': 0.2,
+            'performance': 0.3,
+            'security': 0.4,
+            'reliability': 0.1
+        }
+        
+        weighted_score = (
+            self.geographical_risk * weights['geographical'] +
+            self.performance_risk * weights['performance'] +
+            self.security_risk * weights['security'] +
+            self.reliability_risk * weights['reliability']
+        )
+        
+        self.overall_risk_score = weighted_score
+        return weighted_score
+    
+    def determine_tier_and_category(self) -> Tuple[TierLevel, RiskCategory]:
+        """Determine appropriate tier and risk category"""
+        risk_score = self.calculate_overall_risk()
+        
+        # Determine risk category
+        if risk_score >= 80:
+            category = RiskCategory.INACTIVE
+            tier = TierLevel.TIER_3
+            frequency = 168  # Weekly
+        elif risk_score >= 60:
+            category = RiskCategory.AT_RISK
+            tier = TierLevel.TIER_2
+            frequency = 12   # Every 12 hours
+        elif risk_score >= 30:
+            category = RiskCategory.ACTIVE
+            tier = TierLevel.TIER_1
+            frequency = 24   # Daily
+        else:
+            category = RiskCategory.ACTIVE
+            tier = TierLevel.TIER_1
+            frequency = 24   # Daily
+        
+        self.risk_category = category
+        self.recommended_tier = tier
+        self.scan_frequency_hours = frequency
+        
+        return tier, category
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return {
+            'overall_risk_score': self.overall_risk_score,
+            'geographical_risk': self.geographical_risk,
+            'performance_risk': self.performance_risk,
+            'security_risk': self.security_risk,
+            'reliability_risk': self.reliability_risk,
+            'high_risk_country': self.high_risk_country,
+            'known_bad_asn': self.known_bad_asn,
+            'trust_score': self.trust_score,
+            'confidence_level': self.confidence_level,
+            'risk_category': self.risk_category.value,
+            'recommended_tier': self.recommended_tier.value,
+            'scan_frequency_hours': self.scan_frequency_hours,
+            'risk_assessment_date': self.risk_assessment_date.isoformat() if self.risk_assessment_date else None,
+            'risk_trend': self.risk_trend
+        }
 
 
 # ===============================================================================

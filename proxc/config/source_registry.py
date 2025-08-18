@@ -24,6 +24,7 @@ except ImportError:
 
 from ..proxy_core.models import ProxyInfo, ProxyProtocol
 from ..proxy_core.config import ConfigManager
+from .proxy_sources_config import load_proxy_sources, ProxySourcesConfig
 
 logger = logging.getLogger(__name__)
 
@@ -210,61 +211,82 @@ class SourceRegistry:
         self.logger.info(f"SourceRegistry initialized with {len(self.sources)} sources")
     
     def _load_sources_from_config(self):
-        """Load sources from YAML configuration file"""
-        if not HAS_YAML:
-            self.logger.warning("PyYAML not available, cannot load source configuration")
-            return
-        
-        config_path = Path(__file__).parent / "proxy_sources.yaml"
-        if not config_path.exists():
-            self.logger.warning(f"Source configuration file not found: {config_path}")
-            return
-        
+        """Load sources from three-file configuration structure"""
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config_data = yaml.safe_load(f)
+            # Load configuration using the new loader
+            config_dir = Path(__file__).parent
+            proxy_config = load_proxy_sources(str(config_dir))
             
-            # Load global settings
-            if 'health_monitoring' in config_data:
-                health_config = config_data['health_monitoring']
+            if proxy_config is None:
+                self.logger.warning("Failed to load proxy sources configuration")
+                return
+            
+            # Load global health monitoring settings
+            health_config = proxy_config.get_health_monitoring_config()
+            if health_config:
                 self.health_monitoring_enabled = health_config.get('enabled', True)
                 self.health_check_interval = health_config.get('check_interval', 3600)
                 self.failure_threshold = health_config.get('failure_threshold', 3)
                 self.recovery_threshold = health_config.get('recovery_threshold', 2)
             
-            # Load sources by category
-            proxy_sources = config_data.get('proxy_sources', {})
+            # Load sources from all categories
+            sources_loaded = 0
             
-            for category_name, category_sources in proxy_sources.items():
-                if not isinstance(category_sources, dict):
-                    continue
-                
-                for source_name, source_config in category_sources.items():
-                    if not isinstance(source_config, dict):
-                        continue
-                    
-                    # Skip commented-out sources
-                    if not source_config.get('enabled', False):
-                        continue
-                    
+            # Load free sources
+            for source_name, source_config in proxy_config.free_sources.items():
+                if self._should_load_source(source_config):
                     try:
-                        source = self._create_source_from_config(source_name, source_config, category_name)
-                        self.register_source(source, category_name)
+                        source = self._create_source_from_config(source_name, source_config, "free")
+                        self.register_source(source, "free")
+                        sources_loaded += 1
                     except Exception as e:
-                        self.logger.error(f"Failed to load source {source_name}: {e}")
+                        self.logger.error(f"Failed to load free source {source_name}: {e}")
             
-            self.logger.info(f"Loaded {len(self.sources)} sources from configuration")
+            # Load premium sources
+            for source_name, source_config in proxy_config.premium_sources.items():
+                if self._should_load_source(source_config):
+                    try:
+                        source = self._create_source_from_config(source_name, source_config, "premium")
+                        self.register_source(source, "premium")
+                        sources_loaded += 1
+                    except Exception as e:
+                        self.logger.error(f"Failed to load premium source {source_name}: {e}")
+            
+            # Load custom sources
+            for source_name, source_config in proxy_config.custom_sources.items():
+                if self._should_load_source(source_config):
+                    try:
+                        source = self._create_source_from_config(source_name, source_config, "custom")
+                        self.register_source(source, "custom")
+                        sources_loaded += 1
+                    except Exception as e:
+                        self.logger.error(f"Failed to load custom source {source_name}: {e}")
+            
+            self.logger.info(f"Loaded {sources_loaded} sources from three-file configuration")
             
         except Exception as e:
             self.logger.error(f"Failed to load source configuration: {e}")
     
+    def _should_load_source(self, source_config: Dict[str, Any]) -> bool:
+        """Check if a source should be loaded based on enabled status"""
+        # Check explicit enabled flag first
+        if 'enabled' in source_config:
+            return source_config['enabled']
+        
+        # If no enabled flag, assume enabled (for backward compatibility)
+        return True
+    
     def _create_source_from_config(self, name: str, config: Dict[str, Any], category: str) -> ProxySource:
         """Create ProxySource from configuration dictionary"""
         
+        # Create source name with category prefix (unless already prefixed)
+        source_name = name if '.' in name else f"{category}.{name}"
+        
+        # Handle both new three-file format and legacy format
         # Extract basic fields with defaults
         source = ProxySource(
-            name=f"{category}.{name}",
-            description=config.get('description', ''),
+            name=source_name,
+            description=config.get('description', config.get('name', '')),
             url=config.get('url', ''),
             source_type=config.get('type', 'text_list'),
             enabled=config.get('enabled', True),
@@ -505,7 +527,7 @@ class SourceRegistry:
             }
     
     def reload_configuration(self) -> bool:
-        """Reload sources from configuration file"""
+        """Reload sources from three-file configuration structure"""
         try:
             with self._lock:
                 # Clear existing sources
@@ -513,7 +535,7 @@ class SourceRegistry:
                 self.sources.clear()
                 self.source_categories.clear()
                 
-                # Reload from config
+                # Reload from config using new three-file structure
                 self._load_sources_from_config()
                 
                 new_source_count = len(self.sources)
@@ -527,39 +549,272 @@ class SourceRegistry:
             self.logger.error(f"Failed to reload configuration: {e}")
             return False
     
-    def export_configuration(self, file_path: str) -> bool:
-        """Export current source configuration to file"""
+    def validate_configuration(self) -> Dict[str, Any]:
+        """Validate the current three-file configuration structure"""
+        try:
+            from .proxy_sources_config import validate_three_file_structure
+            
+            config_dir = Path(__file__).parent
+            validation_result = validate_three_file_structure(config_dir)
+            
+            # Add runtime validation of loaded sources
+            validation_result['runtime_validation'] = {
+                'sources_loaded': len(self.sources),
+                'sources_enabled': len(self.get_enabled_sources()),
+                'sources_healthy': len(self.get_healthy_sources()),
+                'categories': list(self.source_categories.keys()),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            
+            return validation_result
+            
+        except Exception as e:
+            self.logger.error(f"Configuration validation error: {e}")
+            return {
+                'valid': False,
+                'errors': [f"Validation failed: {e}"],
+                'timestamp': datetime.utcnow().isoformat()
+            }
+    
+    def validate_cross_file_consistency(self) -> Dict[str, Any]:
+        """Validate cross-file consistency and detect conflicts"""
+        try:
+            from .proxy_sources_config import validate_cross_file_configuration
+            
+            config_dir = Path(__file__).parent
+            validation_result = validate_cross_file_configuration(config_dir)
+            
+            # Add runtime information from the registry
+            validation_result['registry_validation'] = {
+                'sources_in_registry': len(self.sources),
+                'registry_categories': list(self.source_categories.keys()),
+                'healthy_sources_in_registry': len(self.get_healthy_sources()),
+                'enabled_sources_in_registry': len(self.get_enabled_sources()),
+                'validation_timestamp': datetime.utcnow().isoformat()
+            }
+            
+            return validation_result
+            
+        except Exception as e:
+            self.logger.error(f"Cross-file validation error: {e}")
+            return {
+                'valid': False,
+                'errors': [f"Cross-file validation failed: {e}"],
+                'timestamp': datetime.utcnow().isoformat()
+            }
+    
+    def get_comprehensive_health_report(self) -> Dict[str, Any]:
+        """Get a comprehensive health report including cross-file validation"""
+        # Get basic health report
+        health_report = self.get_source_health_report()
+        
+        # Add cross-file validation
+        cross_validation = self.validate_cross_file_consistency()
+        
+        # Combine the reports
+        comprehensive_report = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'source_health': health_report,
+            'configuration_validation': cross_validation,
+            'overall_status': {
+                'healthy': health_report.get('summary', {}).get('healthy_count', 0),
+                'unhealthy': health_report.get('summary', {}).get('unhealthy_count', 0),
+                'warnings': len(cross_validation.get('warnings', [])),
+                'conflicts': sum(len(v) for v in cross_validation.get('conflicts', {}).values()),
+                'recommendations': len(cross_validation.get('recommendations', []))
+            }
+        }
+        
+        # Determine overall health status
+        overall_health = "healthy"
+        if comprehensive_report['overall_status']['unhealthy'] > 0:
+            overall_health = "degraded"
+        if comprehensive_report['overall_status']['conflicts'] > 0:
+            overall_health = "critical"
+        if not cross_validation.get('valid', True):
+            overall_health = "critical"
+        
+        comprehensive_report['overall_health'] = overall_health
+        
+        return comprehensive_report
+    
+    def get_configuration_summary(self) -> Dict[str, Any]:
+        """Get a summary of the current configuration setup"""
+        try:
+            config_dir = Path(__file__).parent
+            proxy_config = load_proxy_sources(str(config_dir))
+            
+            if proxy_config is None:
+                return {'error': 'Failed to load configuration'}
+            
+            return {
+                'configuration_type': 'three_file_structure',
+                'version': proxy_config.version,
+                'last_updated': proxy_config.last_updated,
+                'total_sources': {
+                    'free': len(proxy_config.free_sources),
+                    'premium': len(proxy_config.premium_sources),
+                    'custom': len(proxy_config.custom_sources),
+                    'total': len(proxy_config.free_sources) + len(proxy_config.premium_sources) + len(proxy_config.custom_sources)
+                },
+                'enabled_sources': {
+                    'free': len([s for s in proxy_config.free_sources.values() if s.get('enabled', True)]),
+                    'premium': len([s for s in proxy_config.premium_sources.values() if s.get('enabled', True)]),
+                    'custom': len([s for s in proxy_config.custom_sources.values() if s.get('enabled', True)]),
+                    'total': len(proxy_config.get_enabled_sources())
+                },
+                'profiles_available': list(proxy_config.profiles.keys()) if proxy_config.profiles else [],
+                'health_monitoring_enabled': proxy_config.health_monitoring.get('enabled', False),
+                'loaded_in_registry': len(self.sources),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get configuration summary: {e}")
+            return {'error': f'Failed to get summary: {e}'}
+    
+    def get_sources_by_profile(self, profile_name: str) -> List[ProxySource]:
+        """Get sources that match a specific collection profile"""
+        try:
+            config_dir = Path(__file__).parent
+            proxy_config = load_proxy_sources(str(config_dir))
+            
+            if proxy_config is None:
+                return []
+            
+            profile = proxy_config.get_profile(profile_name)
+            if profile is None:
+                self.logger.warning(f"Profile '{profile_name}' not found")
+                return []
+            
+            # Expand source patterns to actual source names
+            expanded_sources = proxy_config.expand_source_patterns(profile.sources)
+            
+            # Get matching sources from registry
+            matching_sources = []
+            for source_pattern in expanded_sources:
+                source = self.get_source(source_pattern)
+                if source and source.enabled:
+                    # Check if source meets profile quality threshold
+                    if source.quality_score >= profile.quality_threshold:
+                        matching_sources.append(source)
+            
+            return matching_sources
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get sources for profile '{profile_name}': {e}")
+            return []
+    
+    def export_configuration(self, file_path: str, format_type: str = "legacy") -> bool:
+        """Export current source configuration to file
+        
+        Args:
+            file_path: Path to export file
+            format_type: 'legacy' for single file, 'three_file' for new structure
+        """
         if not HAS_YAML:
             self.logger.error("PyYAML not available for export")
             return False
         
         try:
-            # Group sources by category
-            export_data = {
-                'version': '1.0',
-                'last_updated': datetime.utcnow().isoformat(),
-                'proxy_sources': {}
-            }
-            
-            for category, source_names in self.source_categories.items():
-                export_data['proxy_sources'][category] = {}
+            if format_type == "three_file":
+                return self._export_three_file_configuration(file_path)
+            else:
+                return self._export_legacy_configuration(file_path)
                 
-                for source_name in source_names:
-                    if source_name in self.sources:
-                        source = self.sources[source_name]
-                        # Remove category prefix from name for export
-                        clean_name = source_name.split('.', 1)[-1] if '.' in source_name else source_name
-                        export_data['proxy_sources'][category][clean_name] = source.to_dict()
-            
-            with open(file_path, 'w', encoding='utf-8') as f:
-                yaml.dump(export_data, f, default_flow_style=False, indent=2)
-            
-            self.logger.info(f"Configuration exported to: {file_path}")
-            return True
-            
         except Exception as e:
             self.logger.error(f"Failed to export configuration: {e}")
             return False
+    
+    def _export_legacy_configuration(self, file_path: str) -> bool:
+        """Export in legacy single-file format"""
+        # Group sources by category
+        export_data = {
+            'version': '1.0',
+            'last_updated': datetime.utcnow().isoformat(),
+            'proxy_sources': {}
+        }
+        
+        for category, source_names in self.source_categories.items():
+            export_data['proxy_sources'][category] = {}
+            
+            for source_name in source_names:
+                if source_name in self.sources:
+                    source = self.sources[source_name]
+                    # Remove category prefix from name for export
+                    clean_name = source_name.split('.', 1)[-1] if '.' in source_name else source_name
+                    export_data['proxy_sources'][category][clean_name] = source.to_dict()
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            yaml.dump(export_data, f, default_flow_style=False, indent=2)
+        
+        self.logger.info(f"Legacy configuration exported to: {file_path}")
+        return True
+    
+    def _export_three_file_configuration(self, base_path: str) -> bool:
+        """Export in three-file format to a directory"""
+        export_dir = Path(base_path)
+        export_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Prepare three separate configurations
+        api_sources = {'free_apis': {}, 'premium_apis': {}, 'custom_apis': {}}
+        static_sources = {'github_sources': {}, 'text_file_sources': {}, 'html_table_sources': {}, 'custom_static_sources': {}}
+        collection_config = {
+            'version': '1.2',
+            'last_updated': datetime.utcnow().strftime('%Y-%m-%d'),
+            'file_type': 'collection_config'
+        }
+        
+        # Distribute sources based on type and category
+        for category, source_names in self.source_categories.items():
+            for source_name in source_names:
+                if source_name in self.sources:
+                    source = self.sources[source_name]
+                    clean_name = source_name.split('.', 1)[-1] if '.' in source_name else source_name
+                    source_dict = source.to_dict()
+                    
+                    # Determine target location based on source type
+                    if source.source_type == 'api':
+                        if category == 'premium':
+                            api_sources['premium_apis'][clean_name] = source_dict
+                        elif category == 'custom':
+                            api_sources['custom_apis'][clean_name] = source_dict
+                        else:
+                            api_sources['free_apis'][clean_name] = source_dict
+                    else:
+                        # Static sources
+                        if category == 'custom':
+                            static_sources['custom_static_sources'][clean_name] = source_dict
+                        elif 'github' in source.url.lower():
+                            static_sources['github_sources'][clean_name] = source_dict
+                        elif source.source_type == 'html_table':
+                            static_sources['html_table_sources'][clean_name] = source_dict
+                        else:
+                            static_sources['text_file_sources'][clean_name] = source_dict
+        
+        # Write three files
+        files_written = 0
+        
+        # API sources file
+        api_file = export_dir / 'api_sources.yaml'
+        with open(api_file, 'w', encoding='utf-8') as f:
+            yaml.dump(api_sources, f, default_flow_style=False, indent=2)
+        files_written += 1
+        
+        # Static sources file
+        static_file = export_dir / 'static_sources.yaml'
+        with open(static_file, 'w', encoding='utf-8') as f:
+            yaml.dump(static_sources, f, default_flow_style=False, indent=2)
+        files_written += 1
+        
+        # Collection config file
+        config_file = export_dir / 'collection_config.yaml'
+        with open(config_file, 'w', encoding='utf-8') as f:
+            yaml.dump(collection_config, f, default_flow_style=False, indent=2)
+        files_written += 1
+        
+        self.logger.info(f"Three-file configuration exported to: {export_dir} ({files_written} files)")
+        return True
 
 
 # Global registry instance

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Dict
 
 
 class CachePolicy(Enum):
@@ -44,6 +44,24 @@ class CacheConfig:
     enable_threat_cache: bool = True
     enable_header_analysis_cache: bool = True
     
+    # Cache Warming Configuration
+    enable_cache_warming: bool = True
+    warming_predictive_threshold: float = 2.0  # accesses per hour threshold
+    warming_interval: int = 300  # warming check interval in seconds
+    warming_max_concurrent: int = 5  # max concurrent warming operations
+    warming_batch_size: int = 10  # max entries to warm in one batch
+    warming_strategies: Dict[str, bool] = None  # enabled warming strategies
+    
+    def __post_init__(self):
+        """Initialize default warming strategies if not provided"""
+        if self.warming_strategies is None:
+            self.warming_strategies = {
+                'predictive': True,
+                'pattern_based': True,
+                'scheduled': True,
+                'dependency': True
+            }
+    
     def get_ttl_for_result_type(self, result_type: str, is_success: bool = True) -> int:
         """Get appropriate TTL based on result type and success status"""
         if not is_success:
@@ -84,5 +102,13 @@ class CacheConfig:
                 'geolocation': self.enable_geolocation_cache,
                 'threat': self.enable_threat_cache,
                 'header_analysis': self.enable_header_analysis_cache,
+            },
+            'cache_warming': {
+                'enable_cache_warming': self.enable_cache_warming,
+                'warming_predictive_threshold': self.warming_predictive_threshold,
+                'warming_interval': self.warming_interval,
+                'warming_max_concurrent': self.warming_max_concurrent,
+                'warming_batch_size': self.warming_batch_size,
+                'warming_strategies': self.warming_strategies,
             }
         }

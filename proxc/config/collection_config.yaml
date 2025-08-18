@@ -1,0 +1,429 @@
+# ProxC Global Collection Configuration
+# ===================================
+# 
+# This file contains global operational settings that apply to all proxy sources.
+# These settings control how ProxC behaves during proxy collection, validation,
+# and management operations.
+#
+# SEPARATION OF CONCERNS:
+# - This file: Global operational parameters and policies
+# - api_sources.yaml: API-based proxy source definitions
+# - static_sources.yaml: Static URL proxy source definitions
+# 
+# CONFIGURATION PRECEDENCE:
+# 1. CLI flags (highest priority) - override everything
+# 2. Source-specific settings - override global defaults
+# 3. Global settings in this file - default behavior
+#
+# Related files:
+# - api_sources.yaml: API-based proxy sources
+# - static_sources.yaml: Static URL sources  
+# - README_CONFIGURATION.md: Complete documentation
+#
+# ============================================================================
+
+version: "1.2"
+last_updated: "2024-01-20"
+file_type: "collection_config"
+
+# ============================================================================
+# DEFAULT OPERATIONAL SETTINGS
+# ============================================================================
+# These settings apply to all sources unless overridden
+
+defaults:
+  # Request timeouts and retries
+  timeout: 30                    # Default request timeout in seconds
+  max_retries: 3                # Number of retry attempts for failed requests
+  retry_delay: 60               # Seconds to wait between retry attempts
+  retry_backoff_factor: 1.5     # Multiply delay by this factor each retry
+  
+  # Request behavior
+  user_agent_rotation: true     # Rotate user agents to avoid detection
+  respect_robots_txt: false     # Ignore robots.txt for proxy sources
+  verify_ssl: false            # Don't verify SSL certificates (proxy sources often have issues)
+  follow_redirects: true       # Follow HTTP redirects
+  max_redirects: 3             # Maximum number of redirects to follow
+  
+  # Content handling
+  max_content_size: 52428800   # 50MB maximum response size
+  compression: true            # Accept gzip/deflate compression
+  
+  # Anti-detection measures
+  randomize_requests: true     # Add random delays and vary request patterns
+  use_session_persistence: true # Reuse HTTP connections when possible
+
+# ============================================================================
+# RATE LIMITING CONFIGURATION
+# ============================================================================
+# Global rate limiting settings to prevent overwhelming sources
+
+rate_limiting:
+  # Default rate limiting
+  default_delay: 2.0           # Default seconds between requests to same source
+  jitter_range: [0.1, 0.5]    # Random delay variation to avoid patterns
+  
+  # Burst protection
+  burst_protection: true       # Prevent rapid consecutive requests
+  burst_window: 10             # Time window in seconds for burst detection
+  max_burst_requests: 3        # Maximum requests allowed in burst window
+  
+  # Adaptive rate limiting
+  adaptive_delays: true        # Adjust delays based on response times
+  slow_response_threshold: 5000 # Response time (ms) that triggers slower requests
+  fast_response_threshold: 1000 # Response time (ms) that allows faster requests
+  
+  # Per-source rate limiting
+  per_source_limits:
+    github_sources: 3.0        # Extra delay for GitHub to avoid rate limits
+    html_table_sources: 4.0    # Slower for HTML scraping sources
+    premium_apis: 0.5          # Faster for paid premium services
+  
+  # Global rate limiting
+  global_rate_limit: 10        # Maximum requests per second across all sources
+  global_concurrent_limit: 5   # Maximum concurrent requests across all sources
+
+# ============================================================================
+# QUALITY FILTERING CONFIGURATION
+# ============================================================================
+# Filters applied during collection to improve proxy quality
+
+quality_filters:
+  # Success rate filtering
+  min_success_rate: 0.3        # 30% minimum success rate for proxy validation
+  success_rate_window: 100     # Number of recent validations to consider
+  
+  # Performance filtering
+  max_response_time: 10000     # 10 seconds maximum response time (milliseconds)
+  preferred_response_time: 3000 # 3 seconds preferred response time
+  
+  # Geographic filtering
+  exclude_private_ips: true    # Skip private IP ranges (192.168.x.x, 10.x.x.x, etc.)
+  exclude_localhost: true      # Skip localhost and 127.x.x.x addresses
+  exclude_reserved_ips: true   # Skip reserved IP ranges
+  
+  # Country filtering (optional - can be overridden by CLI)
+  # exclude_countries: ["CN", "RU", "KP"]  # Uncomment to exclude specific countries
+  # include_countries: ["US", "GB", "DE", "CA", "AU"]  # Uncomment to only include specific countries
+  
+  # Protocol filtering
+  validate_protocols: true     # Verify that proxy actually supports claimed protocol
+  allow_mixed_protocols: true  # Allow sources that mix HTTP/HTTPS/SOCKS
+  
+  # Port filtering
+  allowed_port_ranges:         # Allowed port ranges for proxy validation
+    - [80, 80]                 # HTTP standard port
+    - [443, 443]               # HTTPS standard port
+    - [1080, 1080]             # SOCKS standard port
+    - [3128, 3128]             # Squid proxy standard port
+    - [8080, 8090]             # Common proxy ports
+    - [8000, 8000]             # Alternative HTTP port
+    - [9050, 9050]             # Tor SOCKS port
+  
+  # Content filtering
+  min_proxy_count: 5           # Minimum proxies required from a source to be useful
+  max_proxy_count: 10000       # Maximum proxies to collect from any single source
+  duplicate_tolerance: 0.8     # Allow up to 80% duplicates before flagging source
+
+# ============================================================================
+# COLLECTION SCHEDULING
+# ============================================================================
+# Settings for automated and scheduled proxy collection
+
+schedules:
+  # Default collection intervals
+  default_interval: "0 */6 * * *"  # Every 6 hours (cron format)
+  health_check_interval: "0 */1 * * *"  # Every hour for health checks
+  
+  # Timing preferences
+  peak_hours: [6, 12, 18]      # Preferred collection times (24-hour format)
+  avoid_hours: [0, 1, 2, 3]    # Low-activity hours to avoid
+  
+  # Collection windows
+  max_collection_duration: 1800 # 30 minutes maximum for full collection cycle
+  source_timeout_multiplier: 1.5 # Multiply source timeout by this during scheduled runs
+  
+  # Retry scheduling
+  failed_source_retry_delay: 3600 # 1 hour before retrying failed sources
+  persistent_failure_backoff: 86400 # 24 hours for sources with persistent failures
+
+# ============================================================================
+# HEALTH MONITORING CONFIGURATION
+# ============================================================================
+# Settings for monitoring source health and automatic management
+
+health_monitoring:
+  # Health checking
+  enabled: true                # Enable automatic health monitoring
+  check_interval: 3600         # Check source health every hour (seconds)
+  check_timeout: 30            # Timeout for health check requests
+  
+  # Failure thresholds
+  failure_threshold: 3         # Disable source after this many consecutive failures
+  recovery_threshold: 2        # Re-enable source after this many consecutive successes
+  total_failure_threshold: 10  # Permanently disable after this many total failures
+  
+  # Health metrics
+  metrics:
+    - "response_time"          # Track response times
+    - "success_rate"           # Track success/failure rates
+    - "proxy_quality"          # Track quality of returned proxies
+    - "error_rate"             # Track error rates
+    - "data_freshness"         # Track how fresh the data is
+    - "uptime"                 # Track source availability
+  
+  # Automatic actions
+  auto_disable_failed: true    # Automatically disable consistently failing sources
+  auto_enable_recovered: true  # Automatically re-enable recovered sources
+  alert_on_failures: true     # Generate alerts for source failures
+  alert_threshold: 50          # Alert when more than 50% of sources are failing
+  
+  # Health scoring
+  health_score_weights:
+    response_time: 0.3         # Weight for response time in health score
+    success_rate: 0.4          # Weight for success rate in health score
+    proxy_quality: 0.2         # Weight for proxy quality in health score
+    uptime: 0.1               # Weight for uptime in health score
+  
+  # Health thresholds
+  thresholds:
+    max_response_time: 30000   # 30 seconds maximum response time
+    min_success_rate: 0.3      # 30% minimum success rate
+    max_error_rate: 0.7        # 70% maximum error rate
+    min_proxy_count: 10        # Minimum proxies per successful collection
+    max_downtime_hours: 6      # Maximum downtime before permanent disable
+
+# ============================================================================
+# PERFORMANCE CONFIGURATION
+# ============================================================================
+# Settings for optimizing collection performance
+
+performance:
+  # Concurrency settings
+  max_concurrent_sources: 5    # Maximum sources to collect from simultaneously
+  max_concurrent_requests: 10  # Maximum concurrent HTTP requests
+  request_queue_size: 100      # Size of request queue
+  worker_thread_count: 5       # Number of worker threads for processing
+  
+  # Connection settings
+  connection_pooling: true     # Use HTTP connection pooling
+  pool_size: 10               # Number of connections per pool
+  pool_maxsize: 20            # Maximum connections per pool
+  persistent_sessions: true   # Keep HTTP sessions alive between requests
+  
+  # Memory management
+  max_memory_usage: 512        # Maximum memory usage in MB
+  gc_threshold: 256           # Trigger garbage collection at this memory usage (MB)
+  cache_size_limit: 100       # Maximum items in various caches
+  
+  # Processing optimization
+  batch_processing: true      # Process proxies in batches for efficiency
+  batch_size: 100            # Number of proxies per batch
+  async_processing: true     # Use asynchronous processing where possible
+  
+  # Resource cleanup
+  cleanup_interval: 300       # Clean up resources every 5 minutes
+  max_idle_connections: 30    # Close idle connections after 30 seconds
+  request_timeout_buffer: 5   # Add 5 seconds buffer to request timeouts
+
+# ============================================================================
+# ADVANCED CONFIGURATION
+# ============================================================================
+# Advanced settings for expert users
+
+advanced:
+  # Data processing
+  normalize_data: true         # Normalize collected proxy data
+  validate_formats: true      # Validate proxy formats before processing
+  deduplicate_sources: true   # Remove duplicates across sources
+  
+  # Security settings
+  sandbox_mode: false         # Run in sandbox mode (limits functionality)
+  strict_ssl_validation: false # Enable strict SSL validation
+  verify_proxy_chains: true   # Detect and validate proxy chains
+  
+  # Logging and monitoring
+  log_level: "INFO"           # Default log level (DEBUG, INFO, WARNING, ERROR)
+  log_requests: false         # Log all HTTP requests (verbose)
+  log_responses: false        # Log all HTTP responses (very verbose)
+  metrics_collection: true   # Collect detailed performance metrics
+  metrics_retention_days: 7   # Keep metrics for 7 days
+  
+  # Experimental features
+  ai_quality_prediction: false      # Use AI to predict proxy quality
+  machine_learning_optimization: false # Use ML to optimize collection
+  blockchain_verification: false    # Experimental blockchain verification
+  predictive_scaling: false         # Predictive resource scaling
+  
+  # Development settings
+  debug_mode: false           # Enable debug features
+  profiling_enabled: false   # Enable performance profiling
+  test_mode: false           # Use test endpoints for development
+  mock_responses: false      # Use mock responses for testing
+
+# ============================================================================
+# INTEGRATION SETTINGS
+# ============================================================================
+# Settings for integrating with external systems
+
+integration:
+  # Database settings
+  database_enabled: true      # Enable database storage
+  database_batch_size: 1000  # Insert proxies in batches of this size
+  database_sync_interval: 300 # Sync to database every 5 minutes
+  
+  # Cache settings
+  cache_enabled: true         # Enable result caching
+  cache_ttl: 3600            # Cache time-to-live in seconds
+  cache_size_mb: 128         # Maximum cache size in MB
+  cache_compression: true    # Compress cached data
+  
+  # Export settings
+  auto_export_enabled: false  # Automatically export collected proxies
+  export_format: "json"      # Default export format (json, csv, txt)
+  export_interval: 1800      # Export every 30 minutes
+  export_path: "./exports"   # Directory for exported files
+  
+  # API integration
+  webhook_enabled: false     # Enable webhook notifications
+  webhook_url: ""           # URL for webhook notifications
+  webhook_events: ["collection_complete", "source_failure", "health_alert"]
+  
+  # Monitoring integration
+  prometheus_enabled: false  # Enable Prometheus metrics
+  prometheus_port: 9090     # Port for Prometheus metrics
+  statsd_enabled: false     # Enable StatsD metrics
+  statsd_host: "localhost"  # StatsD server host
+  statsd_port: 8125        # StatsD server port
+
+# ============================================================================
+# COLLECTION PROFILES
+# ============================================================================
+# Pre-defined collection strategies for different use cases
+
+profiles:
+  # Quick scan for immediate needs
+  quick_scan:
+    name: "Quick Scan"
+    description: "Fast collection from high-quality sources"
+    max_duration: 300          # 5 minutes maximum
+    max_proxies: 500          # Limit proxy count
+    source_filters:
+      quality_threshold: 6     # Only use sources with quality >= 6
+      trust_levels: ["medium", "high", "enterprise"]
+    concurrent_sources: 2     # Use fewer concurrent sources
+    skip_validation: false    # Still validate proxies
+    
+  # Comprehensive collection for large-scale operations
+  deep_hunt:
+    name: "Deep Hunt"
+    description: "Comprehensive collection from all available sources"
+    max_duration: 1800         # 30 minutes maximum
+    max_proxies: 5000         # Higher proxy limit
+    source_filters:
+      quality_threshold: 4     # Use more sources (lower quality threshold)
+      include_experimental: true # Include experimental sources
+    concurrent_sources: 5     # Use more concurrent sources
+    retry_failed: true        # Retry failed sources
+    
+  # High-quality collection for critical operations
+  premium_quality:
+    name: "Premium Quality"
+    description: "Only high-quality and premium sources"
+    max_duration: 600          # 10 minutes
+    max_proxies: 2000         # Moderate proxy limit
+    source_filters:
+      quality_threshold: 7     # High quality threshold
+      trust_levels: ["high", "enterprise"]
+      premium_only: false      # Include free high-quality sources
+    require_validation: true   # Validate all collected proxies
+    concurrent_sources: 3     # Moderate concurrency
+    
+  # Geographic-specific collection
+  geo_targeted:
+    name: "Geographic Targeting"
+    description: "Collection focused on specific geographic regions"
+    max_duration: 900          # 15 minutes
+    max_proxies: 1500         # Moderate proxy limit
+    source_filters:
+      quality_threshold: 5     # Moderate quality
+      geographic_filtering: true
+    geographic_filters:
+      include_countries: ["US", "GB", "DE", "CA", "AU"]
+      exclude_countries: ["CN", "RU", "KP"]
+    concurrent_sources: 4
+    
+  # Maintenance mode for source health checking
+  maintenance:
+    name: "Maintenance Mode"
+    description: "Health checking and maintenance operations"
+    max_duration: 1200         # 20 minutes
+    max_proxies: 100          # Low proxy limit
+    source_filters:
+      include_disabled: true   # Check disabled sources
+      health_check_only: true  # Only perform health checks
+    concurrent_sources: 1     # Sequential checking
+    force_check_all: true     # Check all sources regardless of schedule
+
+# ============================================================================
+# CONFIGURATION VALIDATION
+# ============================================================================
+# Settings for configuration validation and error handling
+
+validation:
+  # Validation settings
+  strict_validation: true     # Enable strict configuration validation
+  warn_on_deprecation: true  # Warn about deprecated configuration options
+  fail_on_invalid_source: false # Continue if some sources are invalid
+  
+  # Source validation
+  validate_urls: true        # Validate source URLs during loading
+  check_ssl_certificates: false # Check SSL certificates for HTTPS sources
+  dns_resolution_check: true # Verify DNS resolution for source hosts
+  
+  # Configuration migration
+  auto_migrate_config: true  # Automatically migrate old configurations
+  backup_before_migration: true # Backup configuration before migration
+  migration_log_enabled: true # Log migration operations
+
+# ============================================================================
+# CONFIGURATION NOTES
+# ============================================================================
+# 
+# TIMEOUT CONFIGURATION:
+# - Individual source timeouts can override global defaults
+# - CLI flags have highest priority: --timeout 60
+# - Scheduled collections use timeout_multiplier for longer timeouts
+# 
+# RATE LIMITING HIERARCHY:
+# 1. Global rate limit (max requests/second across all sources)
+# 2. Per-source-type limits (different limits for APIs vs HTML scraping)
+# 3. Individual source rate limits (specified in source configs)
+# 4. Adaptive rate limiting (adjusts based on response times)
+# 
+# QUALITY FILTERING:
+# - Filters are applied in order: IP validation → geographic → performance
+# - Country filtering can be overridden by CLI flags
+# - Success rate filtering uses rolling window of recent validations
+# 
+# HEALTH MONITORING:
+# - Sources are automatically disabled after failure_threshold failures
+# - Recovery requires recovery_threshold consecutive successes
+# - Health scores combine multiple metrics with configurable weights
+# 
+# COLLECTION PROFILES:
+# - Can be selected via CLI: --profile quick_scan
+# - Override global settings for specific use cases
+# - Custom profiles can be added to this section
+# 
+# PERFORMANCE TUNING:
+# - Increase concurrent_sources for faster collection (uses more resources)
+# - Decrease timeouts for faster but potentially less reliable collection
+# - Enable batch_processing for better memory efficiency with large collections
+# 
+# INTEGRATION:
+# - Database integration stores collected proxies automatically
+# - Cache integration improves performance for repeated operations
+# - Webhook integration enables real-time notifications
+# 
+# ============================================================================

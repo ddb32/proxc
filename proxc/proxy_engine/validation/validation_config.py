@@ -278,11 +278,53 @@ class ValidationConfig:
         FailureReason.NETWORK_UNREACHABLE
     ])
     
+    # Enhanced Retry Configuration
+    enable_intelligent_retries: bool = True        # Enable advanced retry system
+    retry_strategy: str = "exponential_backoff"    # exponential_backoff, linear_backoff, fixed_interval, adaptive
+    retry_max_delay: float = 60.0                  # Maximum delay between retries
+    retry_jitter_type: str = "equal"               # none, full, equal, decorrelated
+    
+    # Circuit Breaker Configuration
+    enable_circuit_breaker: bool = True            # Enable circuit breaker pattern
+    circuit_breaker_threshold: int = 5             # Failures before opening circuit
+    circuit_breaker_timeout: float = 30.0          # Seconds to wait before half-open
+    
+    # Adaptive Retry Configuration
+    adaptive_success_threshold: float = 0.8        # Success rate to reduce delays
+    adaptive_failure_threshold: float = 0.3        # Failure rate to increase delays
+    adaptive_window_size: int = 10                 # Number of attempts for adaptive calculation
+    
+    # Retry Budget Management
+    enable_retry_budget: bool = True               # Prevent retry storms
+    retry_budget_per_minute: int = 100             # Max retries per minute
+    retry_budget_window: float = 60.0              # Budget window in seconds
+    
     # Concurrency settings
     max_workers: int = 20
     min_workers: int = 5
     use_asyncio: bool = True  # Default to async validation for better performance
     max_concurrent_async: int = 100  # Max concurrent async operations
+    
+    # Connection Pool Configuration
+    http_pool_connections: int = 150      # Number of HTTP connection pools to cache
+    http_pool_maxsize: int = 300          # Maximum HTTP connections per pool
+    http_pool_block: bool = False         # Block when pool is exhausted
+    socks_pool_connections: int = 100     # Maximum SOCKS connections to pool
+    socks_pool_block: bool = False        # Block when SOCKS pool is exhausted
+    enable_connection_pooling: bool = True # Enable persistent connection pooling
+    pool_connection_timeout: float = 10.0 # Connection timeout for pooled connections
+    pool_read_timeout: float = 30.0       # Read timeout for pooled connections
+    pool_keep_alive: bool = True          # Enable keep-alive for pooled connections
+    pool_cleanup_interval: int = 300      # Cleanup interval in seconds (5 min)
+    pool_max_idle_time: int = 600         # Max idle time before connection cleanup (10 min)
+    
+    # Connection Reuse Optimization
+    enable_connection_reuse_optimization: bool = True  # Enable advanced connection reuse
+    connection_reuse_threshold: int = 20               # Min batch size for reuse optimization
+    validator_pool_size: int = 15                      # Shared validator pool size
+    enable_proxy_grouping: bool = True                 # Group proxies for better connection reuse
+    enable_connection_affinity: bool = True            # Use connection affinity grouping
+    prewarm_connections: bool = False                  # Pre-warm validator connections
     
     # Validation method preferences by protocol
     validation_methods: Dict[ProxyProtocol, List[ValidationMethod]] = field(default_factory=lambda: {
@@ -358,6 +400,24 @@ class ValidationConfig:
             max_workers=50,
             max_concurrent_async=200,
             use_asyncio=True,
+            # Optimized connection pool settings for speed
+            http_pool_connections=100,
+            http_pool_maxsize=200,
+            http_pool_block=False,
+            socks_pool_connections=50,
+            socks_pool_block=False,
+            enable_connection_pooling=True,
+            pool_connection_timeout=3.0,
+            pool_read_timeout=6.0,
+            pool_keep_alive=True,
+            pool_cleanup_interval=180,  # 3 min for faster cleanup
+            pool_max_idle_time=300,     # 5 min max idle
+            # Fast retry settings
+            enable_intelligent_retries=True,
+            retry_strategy="exponential_backoff",
+            retry_max_delay=10.0,       # Faster max delay for speed
+            circuit_breaker_threshold=3, # Quicker circuit breaking
+            retry_budget_per_minute=150, # Higher budget for speed
             enable_anonymity_testing=False,
             enable_speed_testing=False,
             enable_geolocation_check=False,
@@ -396,6 +456,27 @@ class ValidationConfig:
             max_concurrent_async=300,
             use_asyncio=True,
             
+            # Professional connection pool settings for maximum performance
+            http_pool_connections=200,
+            http_pool_maxsize=400,
+            http_pool_block=False,
+            socks_pool_connections=150,
+            socks_pool_block=False,
+            enable_connection_pooling=True,
+            pool_connection_timeout=2.5,
+            pool_read_timeout=5.0,
+            pool_keep_alive=True,
+            pool_cleanup_interval=120,  # 2 min for aggressive cleanup
+            pool_max_idle_time=240,     # 4 min max idle
+            
+            # Professional retry settings
+            enable_intelligent_retries=True,
+            retry_strategy="adaptive",  # Use adaptive strategy for professional use
+            retry_max_delay=30.0,
+            circuit_breaker_threshold=10, # Higher threshold for professional use
+            adaptive_success_threshold=0.9, # Higher success threshold
+            retry_budget_per_minute=200, # Larger budget for high volume
+            
             # Disable non-essential features for speed
             enable_anonymity_testing=False,
             enable_speed_testing=False,
@@ -433,6 +514,25 @@ class ValidationConfig:
             read_timeout=30.0,
             total_timeout=45.0,
             max_retries=5,
+            # Conservative connection pool settings for thorough testing
+            http_pool_connections=75,
+            http_pool_maxsize=150,
+            http_pool_block=False,
+            socks_pool_connections=50,
+            socks_pool_block=False,
+            enable_connection_pooling=True,
+            pool_connection_timeout=15.0,
+            pool_read_timeout=30.0,
+            pool_keep_alive=True,
+            pool_cleanup_interval=600,  # 10 min for thorough testing
+            pool_max_idle_time=900,     # 15 min max idle
+            # Thorough retry settings
+            enable_intelligent_retries=True,
+            retry_strategy="exponential_backoff",
+            retry_max_delay=120.0,      # Longer delays for thorough testing
+            circuit_breaker_threshold=8, # More tolerant for thorough testing
+            adaptive_window_size=20,    # Larger window for better adaptive behavior
+            retry_budget_per_minute=50, # Conservative budget for thorough testing
             enable_anonymity_testing=True,
             enable_speed_testing=True,
             enable_geolocation_check=True,
@@ -462,3 +562,67 @@ class ValidationConfig:
     def get_enabled_targets(self) -> List[TargetTestConfig]:
         """Get list of enabled target configurations"""
         return [target for target in self.target_configs if target.enabled]
+    
+    def get_connection_pool_config(self) -> dict:
+        """Get connection pool configuration as dictionary"""
+        return {
+            'http_pool_connections': self.http_pool_connections,
+            'http_pool_maxsize': self.http_pool_maxsize,
+            'http_pool_block': self.http_pool_block,
+            'socks_pool_connections': self.socks_pool_connections,
+            'socks_pool_block': self.socks_pool_block,
+            'enable_connection_pooling': self.enable_connection_pooling,
+            'pool_connection_timeout': self.pool_connection_timeout,
+            'pool_read_timeout': self.pool_read_timeout,
+            'pool_keep_alive': self.pool_keep_alive,
+            'pool_cleanup_interval': self.pool_cleanup_interval,
+            'pool_max_idle_time': self.pool_max_idle_time
+        }
+    
+    def update_connection_pool_config(self, **kwargs):
+        """Update connection pool configuration"""
+        pool_attrs = [
+            'http_pool_connections', 'http_pool_maxsize', 'http_pool_block',
+            'socks_pool_connections', 'socks_pool_block', 'enable_connection_pooling',
+            'pool_connection_timeout', 'pool_read_timeout', 'pool_keep_alive',
+            'pool_cleanup_interval', 'pool_max_idle_time'
+        ]
+        
+        for key, value in kwargs.items():
+            if key in pool_attrs and hasattr(self, key):
+                setattr(self, key, value)
+    
+    @classmethod
+    def create_custom_pool_config(cls, pool_profile: str = 'balanced') -> 'ValidationConfig':
+        """Create configuration with custom connection pool profile"""
+        config = cls()
+        
+        if pool_profile == 'high_performance':
+            config.update_connection_pool_config(
+                http_pool_connections=200,
+                http_pool_maxsize=500,
+                socks_pool_connections=150,
+                pool_connection_timeout=2.0,
+                pool_read_timeout=5.0,
+                pool_cleanup_interval=60,
+                pool_max_idle_time=180
+            )
+        elif pool_profile == 'memory_optimized':
+            config.update_connection_pool_config(
+                http_pool_connections=50,
+                http_pool_maxsize=100,
+                socks_pool_connections=25,
+                pool_cleanup_interval=120,
+                pool_max_idle_time=300
+            )
+        elif pool_profile == 'conservative':
+            config.update_connection_pool_config(
+                http_pool_connections=25,
+                http_pool_maxsize=50,
+                socks_pool_connections=15,
+                pool_cleanup_interval=300,
+                pool_max_idle_time=600
+            )
+        # 'balanced' uses default values
+        
+        return config

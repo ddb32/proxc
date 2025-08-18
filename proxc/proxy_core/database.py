@@ -30,7 +30,7 @@ try:
 except ImportError:
     HAS_MONGODB = False
 
-from .models import ProxyInfo, ProxyProtocol, AnonymityLevel, ThreatLevel, ProxyStatus, ValidationStatus, SecurityLevel
+from .models import ProxyInfo, ProxyProtocol, AnonymityLevel, ThreatLevel, ProxyStatus, ValidationStatus, SecurityLevel, RiskCategory, TierLevel
 from .config import ConfigManager
 
 
@@ -80,11 +80,32 @@ if HAS_SQLALCHEMY:
         tags = Column(Text, nullable=True)  # JSON array as string
         notes = Column(Text, nullable=True)
         
+        # Enhancement Phase 1: Intelligent Proxy Management Fields
+        # Geographical information
+        region = Column(String(50), nullable=True, index=True)
+        country = Column(String(50), nullable=True, index=True)
+        city = Column(String(100), nullable=True)
+        
+        # Risk categorization and tier management
+        risk_category = Column(SQLEnum(RiskCategory), nullable=False, default=RiskCategory.UNKNOWN, index=True)
+        scan_priority = Column(Integer, nullable=False, default=5, index=True)
+        tier_level = Column(SQLEnum(TierLevel), nullable=False, default=TierLevel.TIER_4, index=True)
+        
+        # Intelligent scheduling
+        next_scheduled_check = Column(DateTime, nullable=True, index=True)
+        check_frequency = Column(Integer, nullable=False, default=24)
+        
         # Indexes for performance
         __table_args__ = (
             Index('idx_host_port', 'host', 'port'),
             Index('idx_status_threat', 'status', 'threat_level'),
             Index('idx_discovered_source', 'discovered_at', 'source'),
+            # Enhancement Phase 1 indexes
+            Index('idx_region_country', 'region', 'country'),
+            Index('idx_risk_tier', 'risk_category', 'tier_level'),
+            Index('idx_tier_priority', 'tier_level', 'scan_priority'),
+            Index('idx_scheduled_check', 'next_scheduled_check'),
+            Index('idx_geo_risk', 'country', 'risk_category'),
         )
 
 
@@ -278,7 +299,16 @@ class DatabaseManager:
                         geo_data=json.dumps(proxy.geo_location.to_dict() if proxy.geo_location else None),
                         metrics_data=json.dumps(proxy.metrics.to_dict() if proxy.metrics else None),
                         tags=json.dumps(proxy.tags),
-                        notes=proxy.notes
+                        notes=proxy.notes,
+                        # Enhancement Phase 1 fields
+                        region=proxy.region,
+                        country=proxy.country,
+                        city=proxy.city,
+                        risk_category=proxy.risk_category,
+                        scan_priority=proxy.scan_priority,
+                        tier_level=proxy.tier_level,
+                        next_scheduled_check=proxy.next_scheduled_check,
+                        check_frequency=proxy.check_frequency
                     )
                     
                     session.add(proxy_record)
@@ -322,7 +352,16 @@ class DatabaseManager:
                         geo_data=json.dumps(proxy.geo_location.to_dict() if proxy.geo_location else None),
                         metrics_data=json.dumps(proxy.metrics.to_dict() if proxy.metrics else None),
                         tags=json.dumps(proxy.tags),
-                        notes=proxy.notes
+                        notes=proxy.notes,
+                        # Enhancement Phase 1 fields
+                        region=proxy.region,
+                        country=proxy.country,
+                        city=proxy.city,
+                        risk_category=proxy.risk_category,
+                        scan_priority=proxy.scan_priority,
+                        tier_level=proxy.tier_level,
+                        next_scheduled_check=proxy.next_scheduled_check,
+                        check_frequency=proxy.check_frequency
                     )
                     
                     session.add(proxy_record)
@@ -355,6 +394,15 @@ class DatabaseManager:
             existing.metrics_data = json.dumps(proxy.metrics.to_dict() if proxy.metrics else None)
             existing.tags = json.dumps(proxy.tags)
             existing.notes = proxy.notes
+            # Enhancement Phase 1 fields
+            existing.region = proxy.region
+            existing.country = proxy.country
+            existing.city = proxy.city
+            existing.risk_category = proxy.risk_category
+            existing.scan_priority = proxy.scan_priority
+            existing.tier_level = proxy.tier_level
+            existing.next_scheduled_check = proxy.next_scheduled_check
+            existing.check_frequency = proxy.check_frequency
             
             # Session will be committed by the context manager
             self.logger.debug(f"Updated proxy {proxy.address}")
@@ -387,7 +435,16 @@ class DatabaseManager:
                 'geo_data': proxy.geo_location.__dict__ if proxy.geo_location else None,
                 'metrics_data': proxy.metrics.__dict__ if proxy.metrics else None,
                 'tags': proxy.tags,
-                'notes': proxy.notes
+                'notes': proxy.notes,
+                # Enhancement Phase 1 fields
+                'region': proxy.region,
+                'country': proxy.country,
+                'city': proxy.city,
+                'risk_category': proxy.risk_category.value,
+                'scan_priority': proxy.scan_priority,
+                'tier_level': proxy.tier_level.value,
+                'next_scheduled_check': proxy.next_scheduled_check,
+                'check_frequency': proxy.check_frequency
             }
             
             # Upsert (update if exists, insert if not)
@@ -623,7 +680,16 @@ class DatabaseManager:
             geo_location=geo_location,
             metrics=metrics,
             tags=tags,
-            notes=record.notes or ""
+            notes=record.notes or "",
+            # Enhancement Phase 1 fields (with defaults for backward compatibility)
+            region=getattr(record, 'region', None),
+            country=getattr(record, 'country', None),
+            city=getattr(record, 'city', None),
+            risk_category=getattr(record, 'risk_category', RiskCategory.UNKNOWN),
+            scan_priority=getattr(record, 'scan_priority', 5),
+            tier_level=getattr(record, 'tier_level', TierLevel.TIER_4),
+            next_scheduled_check=getattr(record, 'next_scheduled_check', None),
+            check_frequency=getattr(record, 'check_frequency', 24)
         )
     
     def _doc_to_proxy(self, doc: Dict) -> ProxyInfo:
@@ -666,7 +732,16 @@ class DatabaseManager:
             geo_location=geo_location,
             metrics=metrics,
             tags=doc.get('tags', []),
-            notes=doc.get('notes', "")
+            notes=doc.get('notes', ""),
+            # Enhancement Phase 1 fields (with defaults for backward compatibility)
+            region=doc.get('region'),
+            country=doc.get('country'),
+            city=doc.get('city'),
+            risk_category=RiskCategory(doc.get('risk_category', 'unknown')),
+            scan_priority=doc.get('scan_priority', 5),
+            tier_level=TierLevel(doc.get('tier_level', 4)),
+            next_scheduled_check=doc.get('next_scheduled_check'),
+            check_frequency=doc.get('check_frequency', 24)
         )
     
     def close(self):

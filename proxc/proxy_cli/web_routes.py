@@ -43,6 +43,7 @@ class WebRouter:
         """Register default web routes"""
         self.add_route('/', self._handle_dashboard)
         self.add_route('/ws', self._handle_websocket)
+        self.add_route('/manifest.json', self._handle_manifest)
         self.add_route('/api/proxies', self._handle_proxies_api)
         self.add_route('/api/summary', self._handle_summary_api)
         self.add_route('/api/export', self._handle_export_api)
@@ -199,6 +200,31 @@ class WebRouter:
             self.logger.error(f"Error serving API spec: {e}")
             error_response = {'error': 'Failed to load API specification'}
             return 500, 'application/json', json.dumps(error_response).encode('utf-8')
+    
+    def _handle_manifest(self, query_params: Dict[str, list]) -> Tuple[int, str, bytes]:
+        """Handle PWA manifest request"""
+        try:
+            manifest_path = self.template_dir / "manifest.json"
+            
+            if manifest_path.exists():
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    manifest_content = f.read()
+                return 200, 'application/manifest+json', manifest_content.encode('utf-8')
+            else:
+                # Fallback minimal manifest
+                fallback_manifest = {
+                    "name": "ProxC Dashboard",
+                    "short_name": "ProxC",
+                    "start_url": "/",
+                    "display": "standalone",
+                    "background_color": "#0f172a",
+                    "theme_color": "#6366f1"
+                }
+                return 200, 'application/manifest+json', json.dumps(fallback_manifest).encode('utf-8')
+                
+        except Exception as e:
+            self.logger.error(f"Error serving manifest: {e}")
+            return self._handle_500("Manifest error")
     
     def _handle_health_check(self, query_params: Dict[str, list]) -> Tuple[int, str, bytes]:
         """Handle health check request"""

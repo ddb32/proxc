@@ -258,9 +258,9 @@ def validate_advanced_conflicts(**kwargs) -> List[str]:
     web_port = kwargs.get('web_port')
     
     # === 1. Input/Output Validation ===
-    output_modes = sum([bool(output_file), bool(use_db), bool(db_path)])
+    output_modes = sum([bool(output_file), bool(use_db), bool(db_path), bool(view)])
     if output_modes == 0 and (scan or input_file):
-        conflicts.append("Must specify output: use -o/--output for file or -D/--use-db for database")
+        conflicts.append("Must specify output: use -o/--output for file, -D/--use-db for database, or -w/--view for web interface")
     
     if input_file and scan:
         conflicts.append("Cannot use both --scan (discovery) and -f/--file (input) simultaneously")
@@ -364,8 +364,7 @@ def validate_advanced_conflicts(**kwargs) -> List[str]:
     if web_port and not view:
         conflicts.append("--web-port requires --view flag")
     
-    if view and not (output_file or use_db or db_path):
-        conflicts.append("--view requires output destination for results")
+    # Web interface can work with in-memory data, output destination not required
     
     return conflicts
 
@@ -2711,6 +2710,39 @@ def show_proxy_table(proxies: List[ProxyInfo], title: str = "Proxies"):
 @click.option('-G', '--config', help='Load YAML config file')
 @click.option('-l', '--log', help='Save session logs')
 @click.option('--debug-protocol-detection', is_flag=True, default=False, help='Enable detailed protocol detection debugging output')
+
+# === Three-File Configuration Management ===
+@click.option('--validate-config', is_flag=True, 
+              help='Validate three-file configuration structure for consistency and conflicts')
+@click.option('--check-conflicts', is_flag=True, 
+              help='Check for conflicts across configuration files (duplicate sources, URL conflicts)')
+@click.option('--config-report', is_flag=True, 
+              help='Generate comprehensive configuration health report with diagnostics')
+
+# === Enhanced Source Management ===
+@click.option('--list-profiles', is_flag=True, 
+              help='List all available collection profiles with their settings and source patterns')
+@click.option('--profile', type=str, 
+              help='Use specific collection profile for source selection (e.g., quick_scan, deep_hunt)')
+@click.option('--source-status', type=str, 
+              help='Show detailed status and configuration of a specific proxy source')
+
+# === Configuration Tools ===
+@click.option('--migrate-config', is_flag=True, 
+              help='Migrate legacy single-file configuration to new three-file structure')
+@click.option('--export-config', type=click.Choice(['legacy', 'three_file']), 
+              help='Export current configuration to specified format (legacy=single file, three_file=separate files)')
+@click.option('--config-summary', is_flag=True, 
+              help='Show configuration summary with source counts, profiles, and system status')
+
+# === Advanced Source Filtering ===
+@click.option('--sources-by-quality', type=int, 
+              help='Filter sources by minimum quality score (1-10). Higher scores indicate more reliable sources')
+@click.option('--sources-by-type', type=click.Choice(['api', 'static', 'all']), 
+              help='Filter sources by type: api (REST APIs), static (URLs/files), all (no filter)')
+@click.option('--sources-by-category', type=click.Choice(['free', 'premium', 'custom']), 
+              help='Filter sources by category: free (public sources), premium (paid APIs), custom (user-defined)')
+
 @click.pass_context
 def main_cli(ctx, input_file, output_file, validate, protocol_mode, protocol_strict, 
             verbose, quiet, silent,
@@ -2727,8 +2759,84 @@ def main_cli(ctx, input_file, output_file, validate, protocol_mode, protocol_str
             view, web_port, 
             enable_queue, redis_host, redis_port, redis_db, queue_priority, max_retry_attempts, retry_backoff,
             queue_stats, clear_queue, queue_worker_mode,
-            config, log, debug_protocol_detection):
-    """proxc - Advanced Proxy Discovery & Validation Tool"""
+            config, log, debug_protocol_detection,
+            # NEW PARAMETERS FOR THREE-FILE CONFIGURATION
+            validate_config, check_conflicts, config_report,
+            list_profiles, profile, source_status,
+            migrate_config, export_config, config_summary,
+            sources_by_quality, sources_by_type, sources_by_category):
+    """proxc - Advanced Proxy Discovery & Validation Tool
+    
+    ProxC provides comprehensive proxy discovery, validation, and management capabilities
+    with support for multiple protocols, advanced filtering, and intelligent analysis.
+    
+    \b
+    === CONFIGURATION SYSTEM ===
+    ProxC uses a three-file configuration system for better organization:
+    • api_sources.yaml     - API-based proxy sources (REST APIs, paid services)
+    • static_sources.yaml  - Static sources (GitHub lists, text files, HTML tables)
+    • collection_config.yaml - Global settings, profiles, and operational parameters
+    
+    \b
+    === BASIC USAGE EXAMPLES ===
+    
+    Validate proxies from file:
+        proxc -f proxies.txt -v -o results.json
+    
+    Discover proxies from configured sources:
+        proxc -s -c 100 -v -o discovered.txt
+        
+    Use a specific collection profile:
+        proxc -s --profile quick_scan -v
+        
+    List available sources and profiles:
+        proxc --list-sources
+        proxc --list-profiles
+    
+    \b
+    === CONFIGURATION MANAGEMENT ===
+    
+    Validate configuration health:
+        proxc --validate-config --config-report
+        
+    Check for configuration conflicts:
+        proxc --check-conflicts
+        
+    Migrate legacy configuration:
+        proxc --migrate-config
+        
+    Show configuration summary:
+        proxc --config-summary
+    
+    \b
+    === ADVANCED FILTERING ===
+    
+    Filter sources by quality and type:
+        proxc -s --sources-by-quality 7 --sources-by-type api
+        
+    Use premium sources only:
+        proxc -s --sources-by-category premium --profile premium_quality
+        
+    Filter by category and quality:
+        proxc -s --sources-by-category free --sources-by-quality 6
+        
+    Filter results by speed and location:
+        proxc -f proxies.txt -v -F "alive,speed:500" -i "AWS"
+    
+    \b
+    === PERFORMANCE & MONITORING ===
+    
+    Enable caching and adaptive threading:
+        proxc -s -v -K -j --cache-ttl 7200
+        
+    Monitor performance with progress tracking:
+        proxc -f large_list.txt -v -V --cache-stats
+        
+    Generate detailed analytics:
+        proxc -f proxies.txt -v -a -d -o results.json
+    
+    For complete documentation, see: docs/CLI_USAGE.md
+    """
     # Initialize context
     ctx.ensure_object(dict)
     
@@ -3011,7 +3119,7 @@ def main_cli(ctx, input_file, output_file, validate, protocol_mode, protocol_str
         
         # Configure adaptive threading
         adaptive_config, effective_threads = _configure_adaptive_threading(
-            adaptive_threads, count or 100, threads
+            adaptive_threads, 100, threads or CLI_DEFAULT_THREADS
         )
         ctx.obj['adaptive_config'] = adaptive_config
         
@@ -3329,6 +3437,12 @@ def _scan_proxies(ctx, output_file, target_protocol, validate, verbose, timeout_
                 if verbose:
                     print_success(f"   Added {len(new_proxies)} proxies! Total collected: {len(all_proxies)}")
                 
+                # Check if we've reached the user-specified count limit
+                if count and len(all_proxies) >= count:
+                    if verbose:
+                        print_info(f"🎯 Reached target count of {count} proxies, stopping scan")
+                    break
+                
             except Exception as e:
                 # Provide more specific error context and suggestions
                 error_msg = _analyze_scanning_error(e, rounds, verbose)
@@ -3341,6 +3455,12 @@ def _scan_proxies(ctx, output_file, target_protocol, validate, verbose, timeout_
         
         # Final results
         elapsed_time = time.time() - start_time
+        
+        # Trim the proxy list to exactly match the requested count
+        if count and len(all_proxies) > count:
+            all_proxies = all_proxies[:count]
+            if verbose:
+                print_info(f"✂️  Trimmed results to exactly {count} proxies as requested")
         
         if verbose:
             print_success(f"🎯 Scanning complete! Collected {len(all_proxies)} proxies in {rounds} rounds ({elapsed_time:.1f}s)")
