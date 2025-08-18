@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 from ipaddress import IPv4Address, IPv6Address, AddressValueError
 
 
